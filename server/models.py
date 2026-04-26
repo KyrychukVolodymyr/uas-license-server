@@ -6,6 +6,7 @@ class IssueLicenseRequest(BaseModel):
     full_name: str = ""
     tier: str
     days: int = 30
+    days_valid: int | None = None
     max_devices: int = 1
     terms_version: str = "2026-04-21-v2"
 

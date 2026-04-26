@@ -69,7 +69,7 @@ def issue_license(req: IssueLicenseRequest):
         raise HTTPException(status_code=403, detail="Invalid admin API key")
 
     issued_at_dt = datetime.now(timezone.utc)
-    expires_at_dt = issued_at_dt + timedelta(days=int(req.days_valid))
+    expires_at_dt = issued_at_dt + timedelta(days=int(getattr(req, 'days_valid', None) or getattr(req, 'days', 30)))
 
     payload = {
         "email": req.email.lower(),
