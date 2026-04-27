@@ -29,3 +29,7 @@ class RevokeLicenseRequest(BaseModel):
     admin_api_key: str
     license_key: str
     new_status: str
+
+class ResetDevicesRequest(BaseModel):
+    admin_api_key: str
+    license_key: str
