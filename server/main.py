@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 
 from .config import ADMIN_API_KEY
 from .models import (
@@ -11,6 +12,7 @@ from .models import (
     ResetDevicesRequest,
 )
 from .security import generate_license_key, verify_license_key
+from .admin_page import ADMIN_HTML
 from .db import (
     init_db,
     upsert_customer,
@@ -109,6 +111,10 @@ def register_or_update_device(license_key: str, device_id: str, hostname: str, a
         hostname=hostname,
         app_version=app_version,
     )
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_page():
+    return ADMIN_HTML
 
 @app.get("/health")
 def health():
