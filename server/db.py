@@ -305,3 +305,57 @@ def audit_log(action: str, license_key: str = "", customer_email: str = "", deta
                 created_at=now_iso(),
             )
         )
+
+def list_audit_logs(limit: int = 200):
+    with engine.begin() as conn:
+        rows = conn.execute(
+            select(admin_audit_logs).order_by(admin_audit_logs.c.id.desc()).limit(limit)
+        ).fetchall()
+        return [row_to_dict(row) for row in rows]
+
+def list_activations_for_license(license_key: str, limit: int = 100):
+    with engine.begin() as conn:
+        rows = conn.execute(
+            select(activations)
+            .where(activations.c.license_key == license_key)
+            .order_by(activations.c.id.desc())
+            .limit(limit)
+        ).fetchall()
+        return [row_to_dict(row) for row in rows]
+
+def list_validations_for_license(license_key: str, limit: int = 100):
+    with engine.begin() as conn:
+        rows = conn.execute(
+            select(validations)
+            .where(validations.c.license_key == license_key)
+            .order_by(validations.c.id.desc())
+            .limit(limit)
+        ).fetchall()
+        return [row_to_dict(row) for row in rows]
+
+def dashboard_stats():
+    with engine.begin() as conn:
+        license_rows = conn.execute(select(licenses)).fetchall()
+        device_rows = conn.execute(select(devices)).fetchall()
+        customer_rows = conn.execute(select(customers)).fetchall()
+
+    license_list = [row_to_dict(row) for row in license_rows]
+    device_list = [row_to_dict(row) for row in device_rows]
+    customer_list = [row_to_dict(row) for row in customer_rows]
+
+    by_status = {}
+    by_tier = {}
+
+    for lic in license_list:
+        status = str(lic.get("status", "") or "unknown").lower()
+        tier = str(lic.get("tier", "") or "unknown").lower()
+        by_status[status] = by_status.get(status, 0) + 1
+        by_tier[tier] = by_tier.get(tier, 0) + 1
+
+    return {
+        "total_customers": len(customer_list),
+        "total_licenses": len(license_list),
+        "total_devices": len(device_list),
+        "by_status": by_status,
+        "by_tier": by_tier,
+    }

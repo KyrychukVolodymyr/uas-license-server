@@ -163,6 +163,18 @@ ADMIN_HTML = """
     </div>
 
     <div class="card">
+      <h2>Dashboard Summary</h2>
+      <button onclick="loadStats()">Refresh Summary</button>
+      <div id="statsArea" class="small">Summary not loaded yet.</div>
+    </div>
+
+    <div class="card">
+      <h2>Admin Audit Logs</h2>
+      <button onclick="loadLogs()">Refresh Logs</button>
+      <div id="logsArea" class="small">Logs not loaded yet.</div>
+    </div>
+
+    <div class="card">
       <h2>Issue New License</h2>
       <div class="grid">
         <div>
@@ -268,6 +280,131 @@ function showRaw(obj) {
   document.getElementById("rawOutput").textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
 }
 
+async function loadStats() {
+  const key = getAdminKey();
+  if (!key) {
+    alert("Enter admin key first.");
+    return;
+  }
+  try {
+    const data = await apiGet(`/admin/stats?admin_api_key=${encodeURIComponent(key)}`);
+    renderStats(data.stats || {});
+  } catch (err) {
+    document.getElementById("statsArea").textContent = String(err);
+  }
+}
+
+function renderStats(stats) {
+  const byStatus = stats.by_status || {};
+  const byTier = stats.by_tier || {};
+
+  let html = "";
+  html += "<div class='grid'>";
+  html += `<div><b>Total Customers</b><br>${stats.total_customers || 0}</div>`;
+  html += `<div><b>Total Licenses</b><br>${stats.total_licenses || 0}</div>`;
+  html += `<div><b>Total Devices</b><br>${stats.total_devices || 0}</div>`;
+  html += `<div><b>Active</b><br>${byStatus.active || 0}</div>`;
+  html += "</div>";
+
+  html += "<h3>Status Breakdown</h3>";
+  html += "<pre>" + JSON.stringify(byStatus, null, 2) + "</pre>";
+
+  html += "<h3>Tier Breakdown</h3>";
+  html += "<pre>" + JSON.stringify(byTier, null, 2) + "</pre>";
+
+  document.getElementById("statsArea").innerHTML = html;
+}
+
+async function loadLogs() {
+  const key = getAdminKey();
+  if (!key) {
+    alert("Enter admin key first.");
+    return;
+  }
+  try {
+    const data = await apiGet(`/admin/logs?admin_api_key=${encodeURIComponent(key)}&limit=100`);
+    renderLogs(data.logs || []);
+  } catch (err) {
+    document.getElementById("logsArea").textContent = String(err);
+  }
+}
+
+function renderLogs(logs) {
+  if (!logs.length) {
+    document.getElementById("logsArea").innerHTML = "<p class='small'>No logs found.</p>";
+    return;
+  }
+
+  let html = "<table><thead><tr><th>ID</th><th>Action</th><th>Email</th><th>Details</th><th>Created</th></tr></thead><tbody>";
+  for (const row of logs) {
+    html += "<tr>";
+    html += `<td>${row.id || ""}</td>`;
+    html += `<td>${row.action || ""}</td>`;
+    html += `<td>${row.customer_email || ""}</td>`;
+    html += `<td>${row.details || ""}</td>`;
+    html += `<td>${row.created_at || ""}</td>`;
+    html += "</tr>";
+  }
+  html += "</tbody></table>";
+  document.getElementById("logsArea").innerHTML = html;
+}
+
+async function loadHistory(licenseKey) {
+  const key = getAdminKey();
+  if (!key) {
+    alert("Enter admin key first.");
+    return;
+  }
+  try {
+    const data = await apiGet(`/admin/license-history?admin_api_key=${encodeURIComponent(key)}&license_key=${encodeURIComponent(licenseKey)}&limit=100`);
+    renderHistory(data.activations || [], data.validations || []);
+    showRaw(data);
+  } catch (err) {
+    document.getElementById("historyArea").textContent = String(err);
+  }
+}
+
+function renderHistory(activations, validations) {
+  let html = "";
+
+  html += "<h3>Activation History</h3>";
+  if (!activations.length) {
+    html += "<p class='small'>No activations found.</p>";
+  } else {
+    html += "<table><thead><tr><th>ID</th><th>Device ID</th><th>Hostname</th><th>App Version</th><th>Activated</th></tr></thead><tbody>";
+    for (const row of activations) {
+      html += "<tr>";
+      html += `<td>${row.id || ""}</td>`;
+      html += `<td>${row.device_id || ""}</td>`;
+      html += `<td>${row.hostname || ""}</td>`;
+      html += `<td>${row.app_version || ""}</td>`;
+      html += `<td>${row.activated_at || ""}</td>`;
+      html += "</tr>";
+    }
+    html += "</tbody></table>";
+  }
+
+  html += "<h3>Validation History</h3>";
+  if (!validations.length) {
+    html += "<p class='small'>No validations found.</p>";
+  } else {
+    html += "<table><thead><tr><th>ID</th><th>Device ID</th><th>Hostname</th><th>App Version</th><th>Validated</th></tr></thead><tbody>";
+    for (const row of validations) {
+      html += "<tr>";
+      html += `<td>${row.id || ""}</td>`;
+      html += `<td>${row.device_id || ""}</td>`;
+      html += `<td>${row.hostname || ""}</td>`;
+      html += `<td>${row.app_version || ""}</td>`;
+      html += `<td>${row.validated_at || ""}</td>`;
+      html += "</tr>";
+    }
+    html += "</tbody></table>";
+  }
+
+  document.getElementById("historyArea").innerHTML = html;
+}
+
+
 function statusBadge(status) {
   const s = String(status || "").toLowerCase();
   return `<span class="status ${s}">${s}</span>`;
@@ -307,6 +444,8 @@ async function loadLicenses() {
     licenses = data.licenses || [];
     showRaw(data);
     renderLicenses();
+    await loadStats();
+    await loadLogs();
   } catch (err) {
     showRaw(String(err));
     alert("Could not load licenses.");
@@ -378,6 +517,8 @@ function renderDetail(data) {
   html += `<button class="warning" onclick='setStatus(${JSON.stringify(lic.license_key)}, "suspended")'>Suspend</button>`;
   html += `<button class="danger" onclick='setStatus(${JSON.stringify(lic.license_key)}, "revoked")'>Revoke</button>`;
   html += `<button class="secondary" onclick='resetDevices(${JSON.stringify(lic.license_key)})'>Reset Devices</button>`;
+  html += `<button onclick='loadHistory(${JSON.stringify(lic.license_key)})'>Load History</button>`;
+  html += `<div id="historyArea" class="small" style="margin-top:12px;">History not loaded yet.</div>`;
 
   html += "<h3>Devices</h3>";
   if (!devices.length) {

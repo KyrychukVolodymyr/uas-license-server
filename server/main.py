@@ -29,6 +29,10 @@ from .db import (
     list_licenses,
     list_devices_for_license,
     audit_log,
+    list_audit_logs,
+    list_activations_for_license,
+    list_validations_for_license,
+    dashboard_stats,
 )
 
 app = FastAPI(title="License Server V1", version="0.2.0")
@@ -336,4 +340,43 @@ def admin_license_detail(admin_api_key: str, license_key: str):
         "ok": True,
         "license": license_record,
         "devices": device_rows,
+    }
+
+
+@app.get("/admin/stats")
+def admin_stats(admin_api_key: str):
+    require_admin_key(admin_api_key)
+
+    return {
+        "ok": True,
+        "stats": dashboard_stats(),
+    }
+
+@app.get("/admin/logs")
+def admin_logs(admin_api_key: str, limit: int = 200):
+    require_admin_key(admin_api_key)
+
+    rows = list_audit_logs(limit)
+    return {
+        "ok": True,
+        "count": len(rows),
+        "logs": rows,
+    }
+
+@app.get("/admin/license-history")
+def admin_license_history(admin_api_key: str, license_key: str, limit: int = 100):
+    require_admin_key(admin_api_key)
+
+    license_record = get_license(license_key)
+    if not license_record:
+        raise HTTPException(status_code=404, detail="License not found")
+
+    activation_rows = list_activations_for_license(license_key, limit)
+    validation_rows = list_validations_for_license(license_key, limit)
+
+    return {
+        "ok": True,
+        "license": license_record,
+        "activations": activation_rows,
+        "validations": validation_rows,
     }
