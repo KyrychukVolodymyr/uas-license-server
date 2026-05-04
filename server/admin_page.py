@@ -349,6 +349,46 @@ ADMIN_HTML = """
       margin-bottom: 12px;
     }
 
+
+    .key-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .key-hidden-box {
+      margin-top: 8px;
+      max-width: 360px;
+      max-height: 90px;
+      overflow: auto;
+      word-break: break-all;
+      background: rgb(248, 250, 252);
+      border: 1px solid rgb(203, 213, 225);
+      border-radius: 10px;
+      padding: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+    }
+
+    .compact-table td,
+    .compact-table th {
+      white-space: normal;
+    }
+
+    .actions-cell {
+      min-width: 180px;
+    }
+
+    .key-cell {
+      width: 230px;
+      max-width: 230px;
+    }
+
+    .name-cell {
+      min-width: 210px;
+    }
+
     @media (max-width: 900px) {
       .grid, .grid2, .grid3, .summary, .detail-layout, .filters {
         grid-template-columns: 1fr;
@@ -590,13 +630,33 @@ async function loadStats() {
   try {
     const data = await requestJson(`/admin/stats?admin_api_key=${apiKeyQuery()}`);
     const s = data.stats || {};
+    const byStatus = s.by_status || {};
     document.getElementById("statsArea").innerHTML = `
       <div class="summary">
-        <div class="summary-box"><div class="summary-title">Total Licenses</div><div class="summary-number">${fmt(s.total_licenses ?? 0)}</div></div>
-        <div class="summary-box"><div class="summary-title">Active</div><div class="summary-number">${fmt(s.active_licenses ?? 0)}</div></div>
-        <div class="summary-box"><div class="summary-title">Devices</div><div class="summary-number">${fmt(s.total_devices ?? 0)}</div></div>
-        <div class="summary-box"><div class="summary-title">Activations</div><div class="summary-number">${fmt(s.total_activations ?? 0)}</div></div>
-        <div class="summary-box"><div class="summary-title">Validations</div><div class="summary-number">${fmt(s.total_validations ?? 0)}</div></div>
+        <div class="summary-box">
+          <div class="summary-title">Total Licenses</div>
+          <div class="summary-number">${fmt(s.total_licenses ?? 0)}</div>
+        </div>
+        <div class="summary-box">
+          <div class="summary-title">Active Licenses</div>
+          <div class="summary-number">${fmt(s.active_licenses ?? byStatus.active ?? 0)}</div>
+        </div>
+        <div class="summary-box">
+          <div class="summary-title">Active Subscriptions</div>
+          <div class="summary-number">${fmt(s.active_subscriptions ?? 0)}</div>
+        </div>
+        <div class="summary-box">
+          <div class="summary-title">Devices</div>
+          <div class="summary-number">${fmt(s.total_devices ?? 0)}</div>
+        </div>
+        <div class="summary-box">
+          <div class="summary-title">Activations</div>
+          <div class="summary-number">${fmt(s.total_activations ?? 0)}</div>
+        </div>
+        <div class="summary-box">
+          <div class="summary-title">Validations</div>
+          <div class="summary-number">${fmt(s.total_validations ?? 0)}</div>
+        </div>
       </div>`;
   } catch (e) {
     document.getElementById("statsArea").innerHTML = `<div class="message error-message">${escapeHtml(e.message)}</div>`;
@@ -681,6 +741,18 @@ async function loadLicenses() {
   }
 }
 
+
+function toggleLicenseKey(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle("hidden");
+}
+
+function copyLicenseKeyValue(value) {
+  navigator.clipboard.writeText(value || "");
+  alert("License key copied.");
+}
+
 function clearFilters() {
   document.getElementById("licenseSearch").value = "";
   document.getElementById("statusFilter").value = "";
@@ -694,7 +766,7 @@ function renderLicenses() {
   const tier = document.getElementById("tierFilter").value;
 
   let rows = allLicenses.filter(l => {
-    const text = `${l.customer_email || ""} ${l.license_key || ""}`.toLowerCase();
+    const text = `${l.customer_email || ""} ${l.customer_full_name || ""} ${l.license_key || ""}`.toLowerCase();
     if (search && !text.includes(search)) return false;
     if (status && String(l.status || "").toLowerCase() !== status) return false;
     if (tier && String(l.tier || "").toLowerCase() !== tier) return false;
@@ -708,36 +780,56 @@ function renderLicenses() {
 
   document.getElementById("licensesArea").innerHTML = `
     <div class="table-wrap">
-      <table>
+      <table class="compact-table">
         <thead>
           <tr>
-            <th>Email</th>
+            <th class="name-cell">Customer</th>
             <th>Plan</th>
             <th>Status</th>
             <th>Devices</th>
             <th>Expires</th>
-            <th>License Key</th>
-            <th>Actions</th>
+            <th class="key-cell">License Key</th>
+            <th class="actions-cell">Actions</th>
           </tr>
         </thead>
         <tbody>
-          ${rows.map(l => `
-            <tr>
-              <td>${fmt(l.customer_email)}</td>
-              <td>${pill(l.tier || "basic", "tier")}</td>
-              <td>${pill(l.status || "missing", "status")}</td>
-              <td>${fmt(l.device_count ?? "")} / ${fmt(l.max_devices)}</td>
-              <td>${fmt(l.expires_at)}</td>
-              <td><span class="small">${fmt(l.license_key)}</span></td>
-              <td class="row-actions">
-                <button onclick="openDetail('${escapeHtml(l.license_key)}')">Open</button>
-                <button class="success" onclick="quickRenew('${escapeHtml(l.license_key)}', 30)">Renew 30d</button>
-              </td>
-            </tr>`).join("")}
+          ${rows.map((l, idx) => {
+            const key = l.license_key || "";
+            const keyId = `licenseKey_${idx}`;
+            const deviceCount = l.device_count ?? 0;
+            const maxDevices = l.max_devices ?? "";
+            const email = l.customer_email || "";
+            const fullName = l.customer_full_name || "";
+            const keyJson = JSON.stringify(key);
+            const openJson = JSON.stringify(key);
+            return `
+              <tr>
+                <td class="name-cell">
+                  <b>${fmt(email)}</b>
+                  ${fullName ? `<br><span class="small">${fmt(fullName)}</span>` : ""}
+                </td>
+                <td>${pill(l.tier || "basic", "tier")}</td>
+                <td>${pill(l.status || "missing", "status")}</td>
+                <td><b>${fmt(deviceCount)}</b> / ${fmt(maxDevices)}</td>
+                <td>${fmt(l.expires_at)}</td>
+                <td class="key-cell">
+                  <div class="key-actions">
+                    <button class="secondary" onclick="toggleLicenseKey('${keyId}')">View Key</button>
+                    <button onclick='copyLicenseKeyValue(${keyJson})'>Copy Key</button>
+                  </div>
+                  <div id="${keyId}" class="key-hidden-box hidden">${fmt(key)}</div>
+                </td>
+                <td class="actions-cell">
+                  <button onclick='openDetail(${openJson})'>Open</button>
+                  <button class="success" onclick='quickRenew(${openJson}, 30)'>Renew 30d</button>
+                </td>
+              </tr>`;
+          }).join("")}
         </tbody>
       </table>
     </div>`;
 }
+
 
 async function openDetail(licenseKey) {
   currentDetailLicenseKey = licenseKey;

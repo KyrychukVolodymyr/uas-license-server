@@ -282,10 +282,34 @@ def reset_devices_for_license(license_key: str):
 
 def list_licenses(limit: int = 200):
     with engine.begin() as conn:
-        rows = conn.execute(
+        license_rows = conn.execute(
             select(licenses).order_by(licenses.c.id.desc()).limit(limit)
         ).fetchall()
-        return [row_to_dict(row) for row in rows]
+        device_rows = conn.execute(select(devices)).fetchall()
+        customer_rows = conn.execute(select(customers)).fetchall()
+
+    license_list = [row_to_dict(row) for row in license_rows]
+    device_list = [row_to_dict(row) for row in device_rows]
+    customer_list = [row_to_dict(row) for row in customer_rows]
+
+    device_counts = {}
+    for dev in device_list:
+        key = dev.get("license_key", "")
+        device_counts[key] = device_counts.get(key, 0) + 1
+
+    customer_names = {}
+    for customer in customer_list:
+        email = str(customer.get("email", "")).strip().lower()
+        customer_names[email] = customer.get("full_name", "") or ""
+
+    for lic in license_list:
+        key = lic.get("license_key", "")
+        email = str(lic.get("customer_email", "")).strip().lower()
+        lic["device_count"] = device_counts.get(key, 0)
+        lic["customer_full_name"] = customer_names.get(email, "")
+
+    return license_list
+
 
 def list_devices_for_license(license_key: str):
     with engine.begin() as conn:
@@ -338,24 +362,41 @@ def dashboard_stats():
         license_rows = conn.execute(select(licenses)).fetchall()
         device_rows = conn.execute(select(devices)).fetchall()
         customer_rows = conn.execute(select(customers)).fetchall()
+        activation_rows = conn.execute(select(activations)).fetchall()
+        validation_rows = conn.execute(select(validations)).fetchall()
 
     license_list = [row_to_dict(row) for row in license_rows]
     device_list = [row_to_dict(row) for row in device_rows]
     customer_list = [row_to_dict(row) for row in customer_rows]
+    activation_list = [row_to_dict(row) for row in activation_rows]
+    validation_list = [row_to_dict(row) for row in validation_rows]
 
     by_status = {}
     by_tier = {}
 
     for lic in license_list:
-        status = str(lic.get("status", "") or "unknown").lower()
-        tier = str(lic.get("tier", "") or "unknown").lower()
+        status = str(lic.get("status", "") or "").lower()
+        tier = str(lic.get("tier", "") or "").lower()
         by_status[status] = by_status.get(status, 0) + 1
         by_tier[tier] = by_tier.get(tier, 0) + 1
+
+    active_licenses = by_status.get("active", 0)
+    active_subscriptions = 0
+
+    for lic in license_list:
+        status = str(lic.get("status", "") or "").lower()
+        tier = str(lic.get("tier", "") or "").lower()
+        if status == "active" and tier in ("basic", "pro"):
+            active_subscriptions += 1
 
     return {
         "total_customers": len(customer_list),
         "total_licenses": len(license_list),
         "total_devices": len(device_list),
+        "total_activations": len(activation_list),
+        "total_validations": len(validation_list),
+        "active_licenses": active_licenses,
+        "active_subscriptions": active_subscriptions,
         "by_status": by_status,
         "by_tier": by_tier,
     }
