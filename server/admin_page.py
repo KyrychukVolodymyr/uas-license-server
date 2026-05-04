@@ -6,204 +6,386 @@ ADMIN_HTML = """
   <title>UAS License Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
+    :root {
+      --bg: rgb(243, 246, 250);
+      --panel: rgb(255, 255, 255);
+      --ink: rgb(15, 23, 42);
+      --muted: rgb(100, 116, 139);
+      --line: rgb(226, 232, 240);
+      --navy: rgb(15, 23, 42);
+      --blue: rgb(37, 99, 235);
+      --green: rgb(22, 163, 74);
+      --red: rgb(220, 38, 38);
+      --amber: rgb(217, 119, 6);
+      --purple: rgb(124, 58, 237);
+      --slate: rgb(71, 85, 105);
+    }
+
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      background: #f6f7f9;
-      color: #1f2933;
+      background: var(--bg);
+      color: var(--ink);
     }
+
     header {
-      background: #111827;
+      background: linear-gradient(135deg, rgb(15, 23, 42), rgb(30, 41, 59));
       color: white;
-      padding: 18px 24px;
+      padding: 22px 28px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
     }
+
     header h1 {
       margin: 0;
-      font-size: 22px;
+      font-size: 24px;
+      letter-spacing: -0.02em;
     }
-    main {
-      padding: 24px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 18px;
-      margin-bottom: 18px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-    }
-    label {
-      display: block;
-      font-weight: 600;
-      margin-top: 10px;
-      margin-bottom: 4px;
+
+    header p {
+      margin: 6px 0 0 0;
+      color: rgb(203, 213, 225);
       font-size: 13px;
     }
+
+    main {
+      padding: 24px;
+      max-width: 1320px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 26px rgba(15,23,42,0.06);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    h3 {
+      margin: 14px 0 8px 0;
+      font-size: 15px;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-top: 10px;
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: rgb(51, 65, 85);
+    }
+
     input, select {
       width: 100%;
       box-sizing: border-box;
-      padding: 9px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
+      padding: 10px;
+      border: 1px solid rgb(203, 213, 225);
+      border-radius: 10px;
       font-size: 14px;
+      background: white;
     }
+
     button {
       padding: 9px 13px;
       border: 0;
-      border-radius: 8px;
-      background: #2563eb;
+      border-radius: 10px;
+      background: var(--blue);
       color: white;
       cursor: pointer;
-      font-weight: 600;
-      margin-top: 10px;
+      font-weight: 700;
+      margin-top: 8px;
       margin-right: 6px;
+      font-size: 13px;
     }
+
+    button:hover {
+      opacity: 0.92;
+    }
+
     button.secondary {
-      background: #475569;
+      background: var(--slate);
     }
+
     button.danger {
-      background: #dc2626;
+      background: var(--red);
     }
+
     button.warning {
-      background: #d97706;
+      background: var(--amber);
     }
+
     button.success {
-      background: #16a34a;
+      background: var(--green);
     }
+
+    button.purple {
+      background: var(--purple);
+    }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 12px;
     }
+
     .grid3 {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 12px;
     }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
     .summary {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
       gap: 12px;
     }
+
     .summary-box {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
+      background: rgb(248, 250, 252);
+      border: 1px solid var(--line);
+      border-radius: 14px;
       padding: 14px;
     }
-    .summary-number {
-      font-size: 26px;
-      font-weight: 800;
-      margin-top: 6px;
+
+    .summary-title {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
+
+    .summary-number {
+      font-size: 28px;
+      font-weight: 900;
+      margin-top: 6px;
+      color: var(--ink);
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
       font-size: 13px;
       background: white;
     }
+
     th, td {
       text-align: left;
-      border-bottom: 1px solid #e5e7eb;
-      padding: 9px;
+      border-bottom: 1px solid rgb(229, 231, 235);
+      padding: 10px;
       vertical-align: top;
     }
+
     th {
-      background: #f1f5f9;
-      font-weight: 700;
+      background: rgb(248, 250, 252);
+      font-weight: 800;
+      color: rgb(51, 65, 85);
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
-    .status {
-      font-weight: 700;
-      padding: 3px 8px;
+
+    .table-wrap {
+      max-height: 520px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .pill {
+      font-weight: 800;
+      padding: 4px 9px;
       border-radius: 999px;
       display: inline-block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
     }
-    .active {
-      background: #dcfce7;
-      color: #166534;
+
+    .status-active {
+      background: rgb(220, 252, 231);
+      color: rgb(22, 101, 52);
     }
-    .revoked, .canceled {
-      background: #fee2e2;
-      color: #991b1b;
+
+    .status-revoked, .status-canceled, .status-expired {
+      background: rgb(254, 226, 226);
+      color: rgb(153, 27, 27);
     }
-    .suspended, .expired {
-      background: #fef3c7;
-      color: #92400e;
+
+    .status-suspended, .status-past_due {
+      background: rgb(254, 243, 199);
+      color: rgb(146, 64, 14);
     }
-    .trial {
-      background: #dbeafe;
-      color: #1e40af;
+
+    .tier-basic {
+      background: rgb(241, 245, 249);
+      color: rgb(51, 65, 85);
     }
+
+    .tier-pro {
+      background: rgb(237, 233, 254);
+      color: rgb(91, 33, 182);
+    }
+
+    .tier-trial {
+      background: rgb(219, 234, 254);
+      color: rgb(30, 64, 175);
+    }
+
+    .tier-internal {
+      background: rgb(224, 242, 254);
+      color: rgb(3, 105, 161);
+    }
+
     .small {
       font-size: 12px;
-      color: #64748b;
+      color: var(--muted);
     }
+
     .message {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
+      background: rgb(248, 250, 252);
+      border: 1px solid var(--line);
+      border-radius: 12px;
       padding: 12px;
       margin-top: 12px;
       font-size: 13px;
     }
+
     .success-message {
-      background: #ecfdf5;
-      border: 1px solid #bbf7d0;
-      color: #14532d;
+      background: rgb(236, 253, 245);
+      border: 1px solid rgb(187, 247, 208);
+      color: rgb(20, 83, 45);
     }
+
     .error-message {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #991b1b;
+      background: rgb(254, 242, 242);
+      border: 1px solid rgb(254, 202, 202);
+      color: rgb(153, 27, 27);
     }
+
     .license-key-box {
       word-break: break-all;
-      background: #f8fafc;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
+      background: rgb(248, 250, 252);
+      border: 1px solid rgb(203, 213, 225);
+      border-radius: 12px;
       padding: 12px;
       margin-top: 10px;
       font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
+
     .hidden {
       display: none;
     }
-    .log-line {
-      padding: 8px 0;
-      border-bottom: 1px solid #e5e7eb;
+
+    .log-window {
+      max-height: 245px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgb(248, 250, 252);
+      padding: 8px 12px;
     }
+
+    .log-window.expanded {
+      max-height: 560px;
+    }
+
+    .log-line {
+      padding: 9px 0;
+      border-bottom: 1px solid rgb(226, 232, 240);
+    }
+
+    .log-line:last-child {
+      border-bottom: 0;
+    }
+
     .muted {
-      color: #64748b;
+      color: var(--muted);
+    }
+
+    .detail-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .detail-box {
+      background: rgb(248, 250, 252);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .row-actions {
+      white-space: nowrap;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .grid, .grid2, .grid3, .summary, .detail-layout, .filters {
+        grid-template-columns: 1fr;
+      }
+      main {
+        padding: 14px;
+      }
     }
   </style>
 </head>
 <body>
   <header>
     <h1>UAS License Admin Dashboard</h1>
+    <p>Basic = 1 device. Pro = 2 devices. Standard is removed from the sales/admin flow.</p>
   </header>
 
   <main>
     <div class="card">
-      <h2>Admin Access</h2>
+      <div class="card-header">
+        <div>
+          <h2>Admin Access</h2>
+          <div class="small">Keep this key private. Use this dashboard only from your own computer.</div>
+        </div>
+        <button onclick="loadEverything()">Load Dashboard</button>
+      </div>
       <label>Admin API Key</label>
       <input id="adminKey" type="password" placeholder="Paste admin key here">
       <button onclick="saveAdminKey()">Save Key in Browser</button>
       <button class="secondary" onclick="clearAdminKey()">Clear Key</button>
-      <button onclick="loadEverything()">Load Dashboard</button>
-      <p class="small">Use this only on your own computer.</p>
     </div>
 
     <div class="card">
-      <h2>Dashboard Summary</h2>
-      <button onclick="loadStats()">Refresh Summary</button>
+      <div class="card-header">
+        <h2>Dashboard Summary</h2>
+        <button onclick="loadStats()">Refresh Summary</button>
+      </div>
       <div id="statsArea" class="small">Summary not loaded yet.</div>
-    </div>
-
-    <div class="card">
-      <h2>Recent Activity</h2>
-      <button onclick="loadLogs()">Refresh Activity</button>
-      <div id="logsArea" class="small">Activity not loaded yet.</div>
     </div>
 
     <div class="card">
@@ -218,20 +400,18 @@ ADMIN_HTML = """
           <input id="issueName" placeholder="Customer Name">
         </div>
         <div>
-          <label>Tier</label>
-          <select id="issueTier">
-            <option value="basic">Basic</option>
-            <option value="standard">Standard</option>
-            <option value="pro">Pro</option>
-            <option value="trial">Trial</option>
+          <label>Plan</label>
+          <select id="issueTier" onchange="applyTierDefaults()">
+            <option value="basic">Basic - 1 device</option>
+            <option value="pro">Pro - 2 devices</option>
+            <option value="trial">Trial - manual</option>
+            <option value="internal">Internal - manual</option>
           </select>
         </div>
         <div>
           <label>Days Valid</label>
           <input id="issueDays" type="number" value="30">
         </div>
-      </div>
-      <div class="grid3">
         <div>
           <label>Max Devices</label>
           <input id="issueMaxDevices" type="number" value="1">
@@ -240,437 +420,502 @@ ADMIN_HTML = """
           <label>Terms Version</label>
           <input id="issueTerms" value="2026-04-21-v2">
         </div>
-        <div>
-          <label>&nbsp;</label>
-          <button onclick="issueLicense()">Issue License</button>
-        </div>
       </div>
-      <div id="issueResult" class="hidden"></div>
+      <button class="success" onclick="issueLicense()">Issue License</button>
+      <div id="issueResult"></div>
     </div>
 
     <div class="card">
-      <h2>Licenses</h2>
-      <div class="grid3">
+      <div class="card-header">
         <div>
-          <label>Search email / status / tier</label>
-          <input id="searchBox" oninput="renderLicenses()" placeholder="Type to filter">
+          <h2>Licenses</h2>
+          <div class="small">Search, filter, open details, renew, revoke, reset devices, or adjust device limit.</div>
         </div>
-        <div>
-          <label>Limit</label>
-          <input id="limitBox" type="number" value="200">
-        </div>
-        <div>
-          <label>&nbsp;</label>
-          <button onclick="loadLicenses()">Refresh</button>
-        </div>
+        <button onclick="loadLicenses()">Refresh Licenses</button>
       </div>
-      <div id="licenseTable"></div>
+
+      <div class="filters">
+        <div>
+          <label>Search</label>
+          <input id="licenseSearch" placeholder="email or license key" oninput="renderLicenses()">
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="statusFilter" onchange="renderLicenses()">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="trial">Trial</option>
+            <option value="suspended">Suspended</option>
+            <option value="revoked">Revoked</option>
+            <option value="expired">Expired</option>
+            <option value="canceled">Canceled</option>
+          </select>
+        </div>
+        <div>
+          <label>Plan</label>
+          <select id="tierFilter" onchange="renderLicenses()">
+            <option value="">All plans</option>
+            <option value="basic">Basic</option>
+            <option value="pro">Pro</option>
+            <option value="trial">Trial</option>
+            <option value="internal">Internal</option>
+          </select>
+        </div>
+        <button class="secondary" onclick="clearFilters()">Clear</button>
+      </div>
+
+      <div id="licensesArea" class="small">Licenses not loaded yet.</div>
+    </div>
+
+    <div id="detailCard" class="card hidden">
+      <div class="card-header">
+        <div>
+          <h2>License Detail</h2>
+          <div class="small">Compact view with scrollable history.</div>
+        </div>
+        <button class="secondary" onclick="closeDetail()">Close Detail</button>
+      </div>
+      <div id="detailArea"></div>
     </div>
 
     <div class="card">
-      <h2>License Detail</h2>
-      <div id="detailArea">
-        <p class="small">Select a license to view details.</p>
+      <div class="card-header">
+        <div>
+          <h2>Recent Activity</h2>
+          <div class="small">Shows latest 5 by default. Expand to review more.</div>
+        </div>
+        <div>
+          <button onclick="loadLogs()">Refresh Activity</button>
+          <button class="secondary" onclick="toggleLogs()">Expand / Collapse</button>
+        </div>
       </div>
+      <div id="logsArea" class="log-window small">Activity not loaded yet.</div>
     </div>
+
   </main>
 
 <script>
-let licenses = [];
+let allLicenses = [];
+let allLogs = [];
+let logsExpanded = false;
+let currentDetailLicenseKey = "";
 
-function getAdminKey() {
+function adminKey() {
   return document.getElementById("adminKey").value.trim();
 }
 
+function apiKeyQuery() {
+  return encodeURIComponent(adminKey());
+}
+
 function saveAdminKey() {
-  const key = getAdminKey();
-  if (!key) {
-    alert("Paste admin key first.");
-    return;
-  }
-  localStorage.setItem("uas_admin_key", key);
-  alert("Admin key saved in this browser.");
+  localStorage.setItem("uas_admin_key", adminKey());
+  showMessage("issueResult", "Admin key saved in this browser.", true);
 }
 
 function clearAdminKey() {
   localStorage.removeItem("uas_admin_key");
   document.getElementById("adminKey").value = "";
-  alert("Admin key cleared.");
 }
 
 function loadSavedKey() {
-  const key = localStorage.getItem("uas_admin_key") || "";
-  document.getElementById("adminKey").value = key;
-}
-
-function showMessage(elementId, text, type="normal") {
-  const el = document.getElementById(elementId);
-  el.classList.remove("hidden");
-  el.className = "message";
-  if (type === "success") el.classList.add("success-message");
-  if (type === "error") el.classList.add("error-message");
-  el.innerHTML = text;
-}
-
-function statusBadge(status) {
-  const s = String(status || "").toLowerCase();
-  return `<span class="status ${s}">${s}</span>`;
-}
-
-function shortDate(value) {
-  if (!value) return "";
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return String(value).split("T")[0] || value;
-  return d.toLocaleDateString(undefined, {year: "numeric", month: "short", day: "numeric"});
-}
-
-function simpleAction(action) {
-  const map = {
-    "issue_license": "License issued",
-    "activate_license": "Device activated",
-    "set_license_status": "License status changed",
-    "reset_devices": "Devices reset"
-  };
-  return map[action] || action || "Activity";
-}
-
-function simpleDetails(details) {
-  if (!details) return "";
-  return String(details)
-    .replace("tier=", "tier: ")
-    .replace("max_devices=", "devices: ")
-    .replace("device_id=", "device: ")
-    .replace("new_status=", "new status: ")
-    .replace("deleted_devices=", "deleted devices: ");
-}
-
-async function apiGet(path) {
-  const res = await fetch(path);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.detail || "Request failed");
+  const saved = localStorage.getItem("uas_admin_key");
+  if (saved) {
+    document.getElementById("adminKey").value = saved;
   }
-  return data;
 }
 
-async function apiPost(path, body) {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(body)
-  });
-  const data = await res.json().catch(() => ({}));
+function showMessage(id, text, ok) {
+  const el = document.getElementById(id);
+  el.innerHTML = `<div class="message ${ok ? "success-message" : "error-message"}">${escapeHtml(text)}</div>`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function fmt(value) {
+  return escapeHtml(value || "");
+}
+
+function pill(value, kind) {
+  const safe = String(value || "").toLowerCase();
+  return `<span class="pill ${kind}-${safe}">${escapeHtml(value || "missing")}</span>`;
+}
+
+function applyTierDefaults() {
+  const tier = document.getElementById("issueTier").value;
+  const max = document.getElementById("issueMaxDevices");
+  const days = document.getElementById("issueDays");
+  if (tier === "basic") {
+    max.value = 1;
+    days.value = 30;
+  } else if (tier === "pro") {
+    max.value = 2;
+    days.value = 30;
+  } else if (tier === "trial") {
+    max.value = 1;
+    days.value = 7;
+  } else if (tier === "internal") {
+    max.value = 2;
+    days.value = 3650;
+  }
+}
+
+async function requestJson(url, options = {}) {
+  const res = await fetch(url, options);
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { raw: text };
+  }
   if (!res.ok) {
-    throw new Error(data.detail || "Request failed");
+    throw new Error(data.detail || data.message || text || `HTTP ${res.status}`);
   }
   return data;
 }
 
 async function loadEverything() {
-  await loadStats();
-  await loadLogs();
-  await loadLicenses();
+  await Promise.allSettled([loadStats(), loadLogs(), loadLicenses()]);
 }
 
 async function loadStats() {
-  const key = getAdminKey();
-  if (!key) {
-    alert("Enter admin key first.");
-    return;
-  }
   try {
-    const data = await apiGet(`/admin/stats?admin_api_key=${encodeURIComponent(key)}`);
-    renderStats(data.stats || {});
-  } catch (err) {
-    document.getElementById("statsArea").textContent = String(err.message || err);
+    const data = await requestJson(`/admin/stats?admin_api_key=${apiKeyQuery()}`);
+    const s = data.stats || {};
+    document.getElementById("statsArea").innerHTML = `
+      <div class="summary">
+        <div class="summary-box"><div class="summary-title">Total Licenses</div><div class="summary-number">${fmt(s.total_licenses ?? 0)}</div></div>
+        <div class="summary-box"><div class="summary-title">Active</div><div class="summary-number">${fmt(s.active_licenses ?? 0)}</div></div>
+        <div class="summary-box"><div class="summary-title">Devices</div><div class="summary-number">${fmt(s.total_devices ?? 0)}</div></div>
+        <div class="summary-box"><div class="summary-title">Activations</div><div class="summary-number">${fmt(s.total_activations ?? 0)}</div></div>
+        <div class="summary-box"><div class="summary-title">Validations</div><div class="summary-number">${fmt(s.total_validations ?? 0)}</div></div>
+      </div>`;
+  } catch (e) {
+    document.getElementById("statsArea").innerHTML = `<div class="message error-message">${escapeHtml(e.message)}</div>`;
   }
-}
-
-function renderStats(stats) {
-  const byStatus = stats.by_status || {};
-  let html = "";
-  html += "<div class='summary'>";
-  html += `<div class='summary-box'><b>Customers</b><div class='summary-number'>${stats.total_customers || 0}</div></div>`;
-  html += `<div class='summary-box'><b>Licenses</b><div class='summary-number'>${stats.total_licenses || 0}</div></div>`;
-  html += `<div class='summary-box'><b>Devices</b><div class='summary-number'>${stats.total_devices || 0}</div></div>`;
-  html += `<div class='summary-box'><b>Active</b><div class='summary-number'>${byStatus.active || 0}</div></div>`;
-  html += `<div class='summary-box'><b>Suspended / Revoked</b><div class='summary-number'>${(byStatus.suspended || 0) + (byStatus.revoked || 0)}</div></div>`;
-  html += "</div>";
-  document.getElementById("statsArea").innerHTML = html;
 }
 
 async function loadLogs() {
-  const key = getAdminKey();
-  if (!key) {
-    alert("Enter admin key first.");
-    return;
-  }
   try {
-    const data = await apiGet(`/admin/logs?admin_api_key=${encodeURIComponent(key)}&limit=50`);
-    renderLogs(data.logs || []);
-  } catch (err) {
-    document.getElementById("logsArea").textContent = String(err.message || err);
+    const data = await requestJson(`/admin/logs?admin_api_key=${apiKeyQuery()}&limit=200`);
+    allLogs = data.logs || [];
+    renderLogs();
+  } catch (e) {
+    document.getElementById("logsArea").innerHTML = `<div class="message error-message">${escapeHtml(e.message)}</div>`;
   }
 }
 
-function renderLogs(logs) {
-  if (!logs.length) {
-    document.getElementById("logsArea").innerHTML = "<p class='small'>No activity yet.</p>";
+function renderLogs() {
+  const area = document.getElementById("logsArea");
+  area.className = logsExpanded ? "log-window expanded small" : "log-window small";
+  const rows = logsExpanded ? allLogs : allLogs.slice(0, 5);
+  if (!rows.length) {
+    area.innerHTML = "No activity found.";
     return;
   }
-
-  let html = "";
-  for (const row of logs) {
-    html += "<div class='log-line'>";
-    html += `<b>${shortDate(row.created_at)}</b> — ${simpleAction(row.action)}`;
-    if (row.customer_email) html += ` for <b>${row.customer_email}</b>`;
-    if (row.details) html += ` <span class='muted'>(${simpleDetails(row.details)})</span>`;
-    html += "</div>";
-  }
-  document.getElementById("logsArea").innerHTML = html;
+  area.innerHTML = rows.map(log => `
+    <div class="log-line">
+      <b>${fmt(log.action)}</b>
+      <span class="muted">${fmt(log.created_at)}</span><br>
+      <span>${fmt(log.customer_email)}</span><br>
+      <span class="muted">${fmt(log.license_key)}</span><br>
+      <span>${fmt(log.details)}</span>
+    </div>`).join("");
 }
 
-async function loadLicenses() {
-  const key = getAdminKey();
-  if (!key) {
-    alert("Enter admin key first.");
-    return;
-  }
-  const limit = document.getElementById("limitBox").value || 200;
-  try {
-    const data = await apiGet(`/admin/licenses?admin_api_key=${encodeURIComponent(key)}&limit=${encodeURIComponent(limit)}`);
-    licenses = data.licenses || [];
-    renderLicenses();
-    await loadStats();
-    await loadLogs();
-  } catch (err) {
-    alert("Could not load licenses: " + String(err.message || err));
-  }
-}
-
-function renderLicenses() {
-  const q = (document.getElementById("searchBox").value || "").toLowerCase();
-  let filtered = licenses.filter(x => {
-    const text = [
-      x.customer_email,
-      x.status,
-      x.tier,
-      x.issued_at,
-      x.expires_at
-    ].join(" ").toLowerCase();
-    return text.includes(q);
-  });
-
-  if (!filtered.length) {
-    document.getElementById("licenseTable").innerHTML = "<p class='small'>No licenses found.</p>";
-    return;
-  }
-
-  let html = "<table><thead><tr>";
-  html += "<th>ID</th><th>Email</th><th>Tier</th><th>Status</th><th>Allowed Devices</th><th>Issued</th><th>Expires</th><th>Action</th>";
-  html += "</tr></thead><tbody>";
-
-  for (const lic of filtered) {
-    html += "<tr>";
-    html += `<td>${lic.id}</td>`;
-    html += `<td>${lic.customer_email || ""}</td>`;
-    html += `<td>${lic.tier || ""}</td>`;
-    html += `<td>${statusBadge(lic.status)}</td>`;
-    html += `<td>${lic.max_devices || ""}</td>`;
-    html += `<td>${shortDate(lic.issued_at)}</td>`;
-    html += `<td>${shortDate(lic.expires_at)}</td>`;
-    html += `<td><button onclick='loadDetail(${JSON.stringify(lic.license_key)})'>Open</button></td>`;
-    html += "</tr>";
-  }
-
-  html += "</tbody></table>";
-  document.getElementById("licenseTable").innerHTML = html;
-}
-
-async function loadDetail(licenseKey) {
-  const key = getAdminKey();
-  if (!key) {
-    alert("Enter admin key first.");
-    return;
-  }
-
-  try {
-    const data = await apiGet(`/admin/license?admin_api_key=${encodeURIComponent(key)}&license_key=${encodeURIComponent(licenseKey)}`);
-    renderDetail(data);
-  } catch (err) {
-    alert("Could not load license detail: " + String(err.message || err));
-  }
-}
-
-function renderDetail(data) {
-  const lic = data.license || {};
-  const devices = data.devices || [];
-
-  let html = "";
-  html += `<h3>${lic.customer_email || ""}</h3>`;
-  html += `<p>Status: ${statusBadge(lic.status)} | Tier: <b>${lic.tier || ""}</b> | Allowed devices: <b>${lic.max_devices || ""}</b></p>`;
-  html += `<p class="small">Issued: ${shortDate(lic.issued_at)} | Expires: ${shortDate(lic.expires_at)}</p>`;
-
-  html += `<button onclick='copyText(${JSON.stringify(lic.license_key)})'>Copy License Key</button>`;
-  html += `<button class="success" onclick='setStatus(${JSON.stringify(lic.license_key)}, "active")'>Set Active</button>`;
-  html += `<button class="warning" onclick='setStatus(${JSON.stringify(lic.license_key)}, "suspended")'>Suspend</button>`;
-  html += `<button class="danger" onclick='setStatus(${JSON.stringify(lic.license_key)}, "revoked")'>Revoke</button>`;
-  html += `<button class="secondary" onclick='resetDevices(${JSON.stringify(lic.license_key)})'>Reset Devices</button>`;
-  html += `<button onclick='loadHistory(${JSON.stringify(lic.license_key)})'>Load History</button>`;
-
-  html += `<div id="historyArea" class="small" style="margin-top:12px;">History not loaded yet.</div>`;
-
-  html += "<h3>Devices</h3>";
-  if (!devices.length) {
-    html += "<p class='small'>No devices activated.</p>";
-  } else {
-    html += "<table><thead><tr><th>Device</th><th>Computer Name</th><th>App Version</th><th>First Seen</th><th>Last Seen</th></tr></thead><tbody>";
-    for (const d of devices) {
-      html += "<tr>";
-      html += `<td>${d.device_id || ""}</td>`;
-      html += `<td>${d.hostname || ""}</td>`;
-      html += `<td>${d.app_version || ""}</td>`;
-      html += `<td>${shortDate(d.first_seen_at)}</td>`;
-      html += `<td>${shortDate(d.last_seen_at)}</td>`;
-      html += "</tr>";
-    }
-    html += "</tbody></table>";
-  }
-
-  document.getElementById("detailArea").innerHTML = html;
+function toggleLogs() {
+  logsExpanded = !logsExpanded;
+  renderLogs();
 }
 
 async function issueLicense() {
-  const key = getAdminKey();
-  if (!key) {
-    alert("Enter admin key first.");
-    return;
-  }
-
-  const body = {
-    admin_api_key: key,
-    email: document.getElementById("issueEmail").value.trim(),
-    full_name: document.getElementById("issueName").value.trim(),
-    tier: document.getElementById("issueTier").value,
-    days: parseInt(document.getElementById("issueDays").value || "30", 10),
-    max_devices: parseInt(document.getElementById("issueMaxDevices").value || "1", 10),
-    terms_version: document.getElementById("issueTerms").value.trim()
-  };
-
   try {
-    const data = await apiPost("/issue-license", body);
-    let html = "";
-    html += "<b>License created successfully.</b>";
-    html += `<div class="license-key-box" id="newLicenseKey">${data.license_key}</div>`;
-    html += `<button onclick='copyText(${JSON.stringify(data.license_key)})'>Copy License Key</button>`;
-    showMessage("issueResult", html, "success");
-    await loadLicenses();
-  } catch (err) {
-    showMessage("issueResult", "Could not issue license: " + String(err.message || err), "error");
+    const body = {
+      admin_api_key: adminKey(),
+      email: document.getElementById("issueEmail").value.trim(),
+      full_name: document.getElementById("issueName").value.trim(),
+      tier: document.getElementById("issueTier").value,
+      days: Number(document.getElementById("issueDays").value || 30),
+      days_valid: Number(document.getElementById("issueDays").value || 30),
+      max_devices: Number(document.getElementById("issueMaxDevices").value || 1),
+      terms_version: document.getElementById("issueTerms").value.trim()
+    };
+    const data = await requestJson("/issue-license", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body)
+    });
+    document.getElementById("issueResult").innerHTML = `
+      <div class="message success-message">
+        <b>License issued.</b>
+        <div class="license-key-box" id="newLicenseKey">${escapeHtml(data.license_key)}</div>
+        <button onclick="copyText('newLicenseKey')">Copy License Key</button>
+        <div class="small">Plan: ${fmt(data.tier)} | Max devices: ${fmt(data.max_devices)} | Expires: ${fmt(data.expires_at)}</div>
+      </div>`;
+    await loadEverything();
+  } catch (e) {
+    showMessage("issueResult", e.message, false);
   }
 }
 
-async function setStatus(licenseKey, status) {
-  const key = getAdminKey();
-  if (!key) {
-    alert("Enter admin key first.");
-    return;
-  }
+function copyText(id) {
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.innerText);
+}
 
-  if (!confirm(`Set license status to ${status}?`)) {
-    return;
-  }
-
+async function loadLicenses() {
   try {
-    await apiPost("/revoke-license", {
-      admin_api_key: key,
-      license_key: licenseKey,
-      new_status: status
+    const data = await requestJson(`/admin/licenses?admin_api_key=${apiKeyQuery()}&limit=500`);
+    allLicenses = data.licenses || [];
+    renderLicenses();
+  } catch (e) {
+    document.getElementById("licensesArea").innerHTML = `<div class="message error-message">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function clearFilters() {
+  document.getElementById("licenseSearch").value = "";
+  document.getElementById("statusFilter").value = "";
+  document.getElementById("tierFilter").value = "";
+  renderLicenses();
+}
+
+function renderLicenses() {
+  const search = document.getElementById("licenseSearch").value.trim().toLowerCase();
+  const status = document.getElementById("statusFilter").value;
+  const tier = document.getElementById("tierFilter").value;
+
+  let rows = allLicenses.filter(l => {
+    const text = `${l.customer_email || ""} ${l.license_key || ""}`.toLowerCase();
+    if (search && !text.includes(search)) return false;
+    if (status && String(l.status || "").toLowerCase() !== status) return false;
+    if (tier && String(l.tier || "").toLowerCase() !== tier) return false;
+    return true;
+  });
+
+  if (!rows.length) {
+    document.getElementById("licensesArea").innerHTML = "No licenses found.";
+    return;
+  }
+
+  document.getElementById("licensesArea").innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Plan</th>
+            <th>Status</th>
+            <th>Devices</th>
+            <th>Expires</th>
+            <th>License Key</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(l => `
+            <tr>
+              <td>${fmt(l.customer_email)}</td>
+              <td>${pill(l.tier || "basic", "tier")}</td>
+              <td>${pill(l.status || "missing", "status")}</td>
+              <td>${fmt(l.device_count ?? "")} / ${fmt(l.max_devices)}</td>
+              <td>${fmt(l.expires_at)}</td>
+              <td><span class="small">${fmt(l.license_key)}</span></td>
+              <td class="row-actions">
+                <button onclick="openDetail('${escapeHtml(l.license_key)}')">Open</button>
+                <button class="success" onclick="quickRenew('${escapeHtml(l.license_key)}', 30)">Renew 30d</button>
+              </td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function openDetail(licenseKey) {
+  currentDetailLicenseKey = licenseKey;
+  document.getElementById("detailCard").classList.remove("hidden");
+  document.getElementById("detailArea").innerHTML = "Loading detail...";
+  try {
+    const detail = await requestJson(`/admin/license?admin_api_key=${apiKeyQuery()}&license_key=${encodeURIComponent(licenseKey)}`);
+    const history = await requestJson(`/admin/license-history?admin_api_key=${apiKeyQuery()}&license_key=${encodeURIComponent(licenseKey)}&limit=200`);
+    renderDetail(detail, history);
+    document.getElementById("detailCard").scrollIntoView({behavior: "smooth"});
+  } catch (e) {
+    document.getElementById("detailArea").innerHTML = `<div class="message error-message">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderDetail(detail, history) {
+  const l = detail.license || {};
+  const devices = detail.devices || [];
+  const activations = history.activations || [];
+  const validations = history.validations || [];
+
+  document.getElementById("detailArea").innerHTML = `
+    <div class="detail-layout">
+      <div class="detail-box">
+        <h3>License</h3>
+        <div><b>Email:</b> ${fmt(l.customer_email)}</div>
+        <div><b>Plan:</b> ${pill(l.tier || "basic", "tier")}</div>
+        <div><b>Status:</b> ${pill(l.status || "missing", "status")}</div>
+        <div><b>Max Devices:</b> ${fmt(l.max_devices)}</div>
+        <div><b>Issued:</b> ${fmt(l.issued_at)}</div>
+        <div><b>Expires:</b> ${fmt(l.expires_at)}</div>
+        <div class="license-key-box" id="detailLicenseKey">${fmt(l.license_key)}</div>
+        <button onclick="copyText('detailLicenseKey')">Copy Key</button>
+
+        <h3>Admin Controls</h3>
+        <div class="grid2">
+          <div>
+            <label>Renew Days</label>
+            <input id="renewDays" type="number" value="30">
+            <button class="success" onclick="renewCurrent()">Renew Membership</button>
+          </div>
+          <div>
+            <label>Max Devices</label>
+            <input id="newMaxDevices" type="number" value="${fmt(l.max_devices || 1)}">
+            <button class="purple" onclick="updateCurrentMaxDevices()">Update Max Devices</button>
+          </div>
+        </div>
+
+        <button class="success" onclick="setStatus('${fmt(l.license_key)}', 'active')">Set Active</button>
+        <button class="warning" onclick="setStatus('${fmt(l.license_key)}', 'suspended')">Suspend</button>
+        <button class="danger" onclick="setStatus('${fmt(l.license_key)}', 'revoked')">Revoke</button>
+        <button class="secondary" onclick="resetDevices('${fmt(l.license_key)}')">Reset Devices</button>
+      </div>
+
+      <div class="detail-box">
+        <h3>Devices</h3>
+        ${devices.length ? `
+          <div class="table-wrap" style="max-height: 260px;">
+            <table>
+              <thead><tr><th>Device</th><th>Host</th><th>Last Seen</th><th>App</th></tr></thead>
+              <tbody>
+                ${devices.map(d => `
+                  <tr>
+                    <td>${fmt(d.device_id)}</td>
+                    <td>${fmt(d.hostname)}</td>
+                    <td>${fmt(d.last_seen_at)}</td>
+                    <td>${fmt(d.app_version)}</td>
+                  </tr>`).join("")}
+              </tbody>
+            </table>
+          </div>` : `<div class="small">No devices activated yet.</div>`}
+      </div>
+    </div>
+
+    <div class="detail-layout" style="margin-top: 14px;">
+      <div class="detail-box">
+        <h3>Recent Activations</h3>
+        <div class="small">Latest 5 shown first. Scroll for more.</div>
+        <div class="log-window">
+          ${(activations.length ? activations : []).map(a => `
+            <div class="log-line">
+              <b>${fmt(a.activated_at)}</b><br>
+              <span>${fmt(a.hostname)}</span><br>
+              <span class="muted">${fmt(a.device_id)}</span>
+            </div>`).join("") || "No activations found."}
+        </div>
+      </div>
+
+      <div class="detail-box">
+        <h3>Recent Validations</h3>
+        <div class="small">Latest 5 visible first. Scroll for more.</div>
+        <div class="log-window">
+          ${(validations.length ? validations : []).map(v => `
+            <div class="log-line">
+              <b>${fmt(v.validated_at)}</b><br>
+              <span>${fmt(v.hostname)}</span><br>
+              <span class="muted">${fmt(v.device_id)}</span>
+            </div>`).join("") || "No validations found."}
+        </div>
+      </div>
+    </div>
+
+    <div id="detailMessage"></div>`;
+}
+
+function closeDetail() {
+  document.getElementById("detailCard").classList.add("hidden");
+  currentDetailLicenseKey = "";
+}
+
+async function setStatus(licenseKey, newStatus) {
+  if (!confirm(`Set license status to ${newStatus}?`)) return;
+  try {
+    await requestJson("/revoke-license", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({admin_api_key: adminKey(), license_key: licenseKey, new_status: newStatus})
     });
-    await loadLicenses();
-    await loadDetail(licenseKey);
-  } catch (err) {
-    alert("Could not update status: " + String(err.message || err));
+    await loadEverything();
+    await openDetail(licenseKey);
+  } catch (e) {
+    showMessage("detailMessage", e.message, false);
   }
 }
 
 async function resetDevices(licenseKey) {
-  const key = getAdminKey();
-  if (!key) {
-    alert("Enter admin key first.");
-    return;
-  }
-
-  if (!confirm("Reset devices for this license? Customer will need to activate again.")) {
-    return;
-  }
-
+  if (!confirm("Reset all activated devices for this license? The user will need to activate again.")) return;
   try {
-    await apiPost("/reset-devices", {
-      admin_api_key: key,
-      license_key: licenseKey
+    await requestJson("/reset-devices", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({admin_api_key: adminKey(), license_key: licenseKey})
     });
-    await loadDetail(licenseKey);
-    await loadStats();
-    await loadLogs();
-  } catch (err) {
-    alert("Could not reset devices: " + String(err.message || err));
+    await loadEverything();
+    await openDetail(licenseKey);
+  } catch (e) {
+    showMessage("detailMessage", e.message, false);
   }
 }
 
-async function loadHistory(licenseKey) {
-  const key = getAdminKey();
-  if (!key) {
-    alert("Enter admin key first.");
-    return;
-  }
+async function quickRenew(licenseKey, days) {
+  if (!confirm(`Renew this license for ${days} days?`)) return;
   try {
-    const data = await apiGet(`/admin/license-history?admin_api_key=${encodeURIComponent(key)}&license_key=${encodeURIComponent(licenseKey)}&limit=100`);
-    renderHistory(data.activations || [], data.validations || []);
-  } catch (err) {
-    document.getElementById("historyArea").textContent = String(err.message || err);
+    await requestJson("/admin/renew-license", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({admin_api_key: adminKey(), license_key: licenseKey, days: days})
+    });
+    await loadEverything();
+  } catch (e) {
+    alert(e.message);
   }
 }
 
-function renderHistory(activations, validations) {
-  let html = "";
-
-  html += "<h3>Activation History</h3>";
-  if (!activations.length) {
-    html += "<p class='small'>No activations found.</p>";
-  } else {
-    for (const row of activations) {
-      html += `<div class='log-line'><b>${shortDate(row.activated_at)}</b> — Device activated`;
-      if (row.hostname) html += ` on <b>${row.hostname}</b>`;
-      if (row.app_version) html += ` <span class='muted'>(${row.app_version})</span>`;
-      html += "</div>";
-    }
-  }
-
-  html += "<h3>Validation History</h3>";
-  if (!validations.length) {
-    html += "<p class='small'>No validations found.</p>";
-  } else {
-    for (const row of validations) {
-      html += `<div class='log-line'><b>${shortDate(row.validated_at)}</b> — License checked`;
-      if (row.hostname) html += ` on <b>${row.hostname}</b>`;
-      if (row.app_version) html += ` <span class='muted'>(${row.app_version})</span>`;
-      html += "</div>";
-    }
-  }
-
-  document.getElementById("historyArea").innerHTML = html;
+async function renewCurrent() {
+  const days = Number(document.getElementById("renewDays").value || 30);
+  await quickRenew(currentDetailLicenseKey, days);
+  await openDetail(currentDetailLicenseKey);
 }
 
-function copyText(text) {
-  navigator.clipboard.writeText(text).then(() => {
-    alert("Copied.");
-  }).catch(() => {
-    alert("Could not copy automatically. Select and copy manually.");
-  });
+async function updateCurrentMaxDevices() {
+  const maxDevices = Number(document.getElementById("newMaxDevices").value || 1);
+  if (!confirm(`Set max devices to ${maxDevices}?`)) return;
+  try {
+    await requestJson("/admin/update-max-devices", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({admin_api_key: adminKey(), license_key: currentDetailLicenseKey, max_devices: maxDevices})
+    });
+    await loadEverything();
+    await openDetail(currentDetailLicenseKey);
+  } catch (e) {
+    showMessage("detailMessage", e.message, false);
+  }
 }
 
 loadSavedKey();
+applyTierDefaults();
 </script>
 </body>
 </html>

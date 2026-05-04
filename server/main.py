@@ -380,3 +380,83 @@ def admin_license_history(admin_api_key: str, license_key: str, limit: int = 100
         "activations": activation_rows,
         "validations": validation_rows,
     }
+
+
+@app.post("/admin/renew-license")
+def admin_renew_license(req: dict):
+    require_admin_key(str(req.get("admin_api_key", "")))
+
+    license_key = str(req.get("license_key", "")).strip()
+    if not license_key:
+        raise HTTPException(status_code=400, detail="license_key is required")
+
+    try:
+        days = int(req.get("days", 30))
+    except Exception:
+        raise HTTPException(status_code=400, detail="days must be a number")
+
+    if days < 1:
+        raise HTTPException(status_code=400, detail="days must be at least 1")
+
+    existing = get_license(license_key)
+    if not existing:
+        raise HTTPException(status_code=404, detail="License not found")
+
+    current_raw = str(existing.get("expires_at", "")).strip()
+    now_dt = datetime.now(timezone.utc)
+
+    try:
+        current_dt = datetime.fromisoformat(current_raw.replace("Z", "+00:00")) if current_raw else now_dt
+    except Exception:
+        current_dt = now_dt
+
+    if current_dt.tzinfo is None:
+        current_dt = current_dt.replace(tzinfo=timezone.utc)
+
+    base_dt = current_dt if current_dt > now_dt else now_dt
+    new_expires = (base_dt + timedelta(days=days)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+    from .db import update_license_expiration_status
+
+    changed = update_license_expiration_status(license_key, new_expires, "active")
+    audit_log("renew_license", license_key, existing.get("customer_email", ""), f"days={days} new_expires={new_expires}")
+
+    return {
+        "ok": True,
+        "license_key": license_key,
+        "changed": changed,
+        "expires_at": new_expires,
+        "status": "active",
+    }
+
+@app.post("/admin/update-max-devices")
+def admin_update_max_devices(req: dict):
+    require_admin_key(str(req.get("admin_api_key", "")))
+
+    license_key = str(req.get("license_key", "")).strip()
+    if not license_key:
+        raise HTTPException(status_code=400, detail="license_key is required")
+
+    try:
+        max_devices = int(req.get("max_devices", 1))
+    except Exception:
+        raise HTTPException(status_code=400, detail="max_devices must be a number")
+
+    if max_devices < 1:
+        raise HTTPException(status_code=400, detail="max_devices must be at least 1")
+
+    existing = get_license(license_key)
+    if not existing:
+        raise HTTPException(status_code=404, detail="License not found")
+
+    from .db import update_license_max_devices
+
+    changed = update_license_max_devices(license_key, max_devices)
+    audit_log("update_max_devices", license_key, existing.get("customer_email", ""), f"max_devices={max_devices}")
+
+    return {
+        "ok": True,
+        "license_key": license_key,
+        "changed": changed,
+        "max_devices": max_devices,
+    }

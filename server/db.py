@@ -359,3 +359,22 @@ def dashboard_stats():
         "by_status": by_status,
         "by_tier": by_tier,
     }
+
+
+def update_license_expiration_status(license_key: str, expires_at: str, status: str = "active"):
+    with engine.begin() as conn:
+        result = conn.execute(
+            update(licenses)
+            .where(licenses.c.license_key == license_key)
+            .values(expires_at=expires_at, status=status)
+        )
+        return result.rowcount
+
+def update_license_max_devices(license_key: str, max_devices: int):
+    with engine.begin() as conn:
+        result = conn.execute(
+            update(licenses)
+            .where(licenses.c.license_key == license_key)
+            .values(max_devices=int(max_devices))
+        )
+        return result.rowcount
