@@ -419,3 +419,14 @@ def update_license_max_devices(license_key: str, max_devices: int):
             .values(max_devices=int(max_devices))
         )
         return result.rowcount
+
+
+def get_latest_license_for_email(email: str):
+    email = email.strip().lower()
+    with engine.begin() as conn:
+        row = conn.execute(
+            select(licenses)
+            .where(licenses.c.customer_email == email)
+            .order_by(licenses.c.id.desc())
+        ).first()
+        return row_to_dict(row)
