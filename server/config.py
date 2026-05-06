@@ -21,3 +21,13 @@ PUBLIC_WEBSITE_URL = os.getenv("PUBLIC_WEBSITE_URL", "https://uas-generator-webs
 DOWNLOAD_MAC_PATH = os.getenv("DOWNLOAD_MAC_PATH", "/public/UAS_Generator_Mac_v019.zip")
 DOWNLOAD_WINDOWS_PATH = os.getenv("DOWNLOAD_WINDOWS_PATH", "/public/UAS_Generator_Windows_v7.zip")
 
+
+# UAS_PATCH15_UPDATE_MVP
+LATEST_WINDOWS_VERSION = os.getenv("LATEST_WINDOWS_VERSION", "v020-windows-update-mvp")
+LATEST_MAC_VERSION = os.getenv("LATEST_MAC_VERSION", "v019-mac")
+LATEST_RELEASE_NOTES = os.getenv(
+    "LATEST_RELEASE_NOTES",
+    "A newer version of UAS Document Generator is available. Please download and replace your old app folder."
+)
+FORCE_UPDATE = os.getenv("FORCE_UPDATE", "false").strip().lower() in {"1", "true", "yes", "y"}
+

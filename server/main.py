@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import time
 import urllib.parse
 import urllib.request
@@ -13,7 +14,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import ADMIN_API_KEY, LICENSE_SIGNING_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_BASIC_PRICE_ID, APP_SUCCESS_URL, APP_CANCEL_URL, RESEND_API_KEY, FROM_EMAIL, SUPPORT_EMAIL, PUBLIC_WEBSITE_URL, DOWNLOAD_MAC_PATH, DOWNLOAD_WINDOWS_PATH
+from .config import ADMIN_API_KEY, LICENSE_SIGNING_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_BASIC_PRICE_ID, APP_SUCCESS_URL, APP_CANCEL_URL, RESEND_API_KEY, FROM_EMAIL, SUPPORT_EMAIL, PUBLIC_WEBSITE_URL, DOWNLOAD_MAC_PATH, DOWNLOAD_WINDOWS_PATH, LATEST_WINDOWS_VERSION, LATEST_MAC_VERSION, LATEST_RELEASE_NOTES, FORCE_UPDATE
 from .models import (
     IssueLicenseRequest,
     ActivateLicenseRequest,
@@ -146,6 +147,90 @@ def admin_page():
 @app.get("/health")
 def health():
     return {"ok": True}
+
+# UAS_PATCH15_UPDATE_MVP
+def _version_to_tuple(value: str):
+    numbers = re.findall(r"\d+", str(value or ""))
+    return tuple(int(x) for x in numbers) if numbers else (0,)
+
+# UAS_PATCH15_UPDATE_MVP
+@app.get("/app-version")
+def app_version(platform: str = "windows", current_version: str = ""):
+    platform_clean = str(platform or "windows").strip().lower()
+    if platform_clean == "mac":
+        latest = LATEST_MAC_VERSION
+        download_path = DOWNLOAD_MAC_PATH
+    else:
+        platform_clean = "windows"
+        latest = LATEST_WINDOWS_VERSION
+        download_path = DOWNLOAD_WINDOWS_PATH
+
+    current = str(current_version or "").strip()
+    latest_clean = str(latest or "").strip()
+
+    update_available = False
+    if latest_clean and current:
+        update_available = _version_to_tuple(latest_clean) > _version_to_tuple(current)
+    elif latest_clean and not current:
+        update_available = False
+
+    return {
+        "ok": True,
+        "platform": platform_clean,
+        "current_version": current,
+        "latest_version": latest_clean,
+        "update_available": update_available,
+        "force_update": bool(FORCE_UPDATE),
+        "release_notes": LATEST_RELEASE_NOTES,
+        "download_page": PUBLIC_WEBSITE_URL.rstrip("/") + "/public/download.html",
+        "download_path": download_path,
+    }
+
+# UAS_PATCH15_UPDATE_MVP
+@app.post("/send-download-link")
+def send_download_link(req: dict):
+    email = str(req.get("email", "")).strip().lower()
+    license_key = str(req.get("license_key", "")).strip()
+    current_version = str(req.get("current_version", "")).strip()
+    platform = str(req.get("platform", "windows")).strip().lower() or "windows"
+
+    generic = {
+        "ok": True,
+        "message": "If this email has an active subscription, instructions will be sent."
+    }
+
+    if not email or "@" not in email:
+        audit_log("send_download_link_invalid_email", "", email, f"platform={platform} version={current_version}")
+        return generic
+
+    lic = None
+
+    if license_key:
+        try:
+            payload = verify_license_key(license_key)
+            info = verify_payload_for_request(payload, email)
+            lic = ensure_license_from_payload(license_key, payload, "")
+            if lic:
+                require_license_usable(lic)
+        except Exception as exc:
+            audit_log("send_download_link_invalid_license", "", email, str(exc)[:300])
+            return generic
+    else:
+        lic = active_license_for_email(email)
+
+    if lic:
+        send_license_download_email(email, lic.get("license_key", license_key))
+        audit_log(
+            "send_download_link",
+            lic.get("license_key", license_key),
+            email,
+            f"platform={platform} current_version={current_version}"
+        )
+    else:
+        audit_log("send_download_link_no_match", "", email, f"platform={platform} current_version={current_version}")
+
+    return generic
+
 
 @app.post("/issue-license")
 def issue_license(req: IssueLicenseRequest):
