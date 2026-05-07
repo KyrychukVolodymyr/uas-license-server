@@ -600,7 +600,7 @@ def b64_url_decode(raw: str) -> bytes:
     pad = "=" * (-len(raw) % 4)
     return base64.urlsafe_b64decode(raw + pad)
 
-def make_download_token(email: str, platform: str, seconds_valid: int = 1800) -> str:
+def make_download_token(email: str, platform: str, seconds_valid: int = 86400) -> str:
     payload = {
         "email": email.strip().lower(),
         "platform": platform,
@@ -764,7 +764,7 @@ def send_license_download_email(email: str, license_key: str):
       </div>
 
       <h3>Download Links</h3>
-      <p>These links are time-limited. If they expire, return to the download page and use “Already Paid?” to request new links.</p>
+      <p>These download links expire in 24 hours. If they expire, return to the download page and use “Already Paid?” to request new links.</p>
 
       <p>
         <a href="{mac_link}" style="display:inline-block;background:#2563eb;color:white;padding:12px 16px;border-radius:8px;text-decoration:none;font-weight:bold;">Download for Mac</a>
