@@ -99,6 +99,31 @@ ADMIN_HTML = """
       background: white;
     }
 
+
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid rgb(203, 213, 225);
+      border-radius: 10px;
+      font-size: 14px;
+      background: white;
+      font-family: Arial, sans-serif;
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    .result-list {
+      max-height: 220px;
+      overflow: auto;
+      background: rgb(248, 250, 252);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
     button {
       padding: 9px 13px;
       border: 0;
@@ -516,6 +541,34 @@ ADMIN_HTML = """
         <button class="secondary" onclick="closeDetail()">Close Detail</button>
       </div>
       <div id="detailArea"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Update Notifications</h2>
+          <div class="small">Send a new-version email to all active license users. Always run Dry Run first.</div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label>Subject</label>
+          <input id="updateSubject" value="New UAS Generator update is available">
+        </div>
+        <div>
+          <label>Limit</label>
+          <input id="updateLimit" type="number" value="500">
+        </div>
+      </div>
+
+      <label>Message</label>
+      <textarea id="updateMessage">A new UAS Generator version is available. Please download the correct version for your device and use your existing license key.</textarea>
+
+      <button class="secondary" onclick="broadcastUpdate(true)">Dry Run — Preview Recipients</button>
+      <button class="warning" onclick="broadcastUpdate(false)">Send Update Email to Active Users</button>
+
+      <div id="updateResult"></div>
     </div>
 
     <div class="card">
@@ -1005,6 +1058,66 @@ async function updateCurrentMaxDevices() {
     showMessage("detailMessage", e.message, false);
   }
 }
+
+
+async function broadcastUpdate(dryRun) {
+  const subject = document.getElementById("updateSubject").value.trim();
+  const message = document.getElementById("updateMessage").value.trim();
+  const limit = Number(document.getElementById("updateLimit").value || 500);
+  const result = document.getElementById("updateResult");
+
+  if (!subject) {
+    result.innerHTML = `<div class="message error-message">Subject is required.</div>`;
+    return;
+  }
+
+  if (!message) {
+    result.innerHTML = `<div class="message error-message">Message is required.</div>`;
+    return;
+  }
+
+  if (!dryRun) {
+    const ok = confirm("This will send update emails to all ACTIVE license users. Did you run Dry Run first?");
+    if (!ok) return;
+  }
+
+  result.innerHTML = `<div class="message">Working...</div>`;
+
+  try {
+    const data = await requestJson("/admin/broadcast-update", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        admin_api_key: adminKey(),
+        dry_run: dryRun,
+        limit: limit,
+        subject: subject,
+        message: message
+      })
+    });
+
+    const rows = data.results || [];
+    const emails = rows.map(r => {
+      const status = r.dry_run ? "dry-run" : (r.sent ? "sent" : "failed");
+      return `<div>${escapeHtml(r.email || "")} — <b>${escapeHtml(status)}</b></div>`;
+    }).join("");
+
+    result.innerHTML = `
+      <div class="message ${data.failed ? "error-message" : "success-message"}">
+        <b>${dryRun ? "Dry Run Complete" : "Broadcast Complete"}</b><br>
+        Recipients: ${escapeHtml(data.recipients ?? 0)}<br>
+        Sent: ${escapeHtml(data.sent ?? 0)}<br>
+        Failed: ${escapeHtml(data.failed ?? 0)}
+        <div class="result-list">${emails || "No active recipients found."}</div>
+      </div>
+    `;
+
+    await loadLogs();
+  } catch (e) {
+    result.innerHTML = `<div class="message error-message">${escapeHtml(e.message)}</div>`;
+  }
+}
+
 
 loadSavedKey();
 applyTierDefaults();
