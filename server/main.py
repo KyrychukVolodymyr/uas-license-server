@@ -867,6 +867,149 @@ def email_from_stripe_event_object(obj: dict) -> str:
 
     return str(email).strip().lower()
 
+
+
+@app.post("/admin/broadcast-update")
+def admin_broadcast_update(req: dict):
+    if str(req.get("admin_api_key", "")) != ADMIN_API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid admin API key")
+
+    dry_run = bool(req.get("dry_run", True))
+    limit = int(req.get("limit", 500))
+    custom_subject = str(req.get("subject", "")).strip()
+    custom_message = str(req.get("message", "")).strip()
+
+    subject = custom_subject or "New UAS Generator update is available"
+    message = custom_message or (
+        "A new UAS Generator version is available. "
+        "Use your existing license key and download the correct version for your device."
+    )
+
+    rows = list_licenses(limit=limit)
+
+    now_dt = datetime.now(timezone.utc)
+    active_by_email = {}
+
+    for lic in rows:
+        email = str(lic.get("customer_email", "")).strip().lower()
+        status = str(lic.get("status", "")).strip().lower()
+        license_key = str(lic.get("license_key", "")).strip()
+        expires_raw = str(lic.get("expires_at", "")).strip()
+
+        if not email or "@" not in email:
+            continue
+
+        if status != "active":
+            continue
+
+        try:
+            expires_dt = parse_iso(expires_raw)
+            if expires_dt < now_dt:
+                continue
+        except Exception:
+            continue
+
+        if email not in active_by_email:
+            active_by_email[email] = {
+                "email": email,
+                "license_key": license_key,
+                "expires_at": expires_raw,
+                "tier": str(lic.get("tier", "")).strip().lower(),
+            }
+
+    recipients = list(active_by_email.values())
+
+    audit_log(
+        "update_broadcast_started",
+        "",
+        "",
+        f"dry_run={dry_run} recipients={len(recipients)} subject={subject[:120]}",
+    )
+
+    results = []
+
+    for item in recipients:
+        email = item["email"]
+        license_key = item["license_key"]
+
+        mac_token = make_download_token(email, "mac")
+        windows_token = make_download_token(email, "windows")
+
+        license_server_base = "https://uas-license-server.onrender.com"
+        mac_link = license_server_base + "/download-file?token=" + urllib.parse.quote(mac_token)
+        windows_link = license_server_base + "/download-file?token=" + urllib.parse.quote(windows_token)
+
+        html = f"""
+        <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+          <h2>UAS Generator Update Available</h2>
+          <p>{message}</p>
+
+          <h3>Your License Key</h3>
+          <div style="word-break: break-all; background: #f3f4f6; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb;">
+            {license_key}
+          </div>
+
+          <h3>Download Updated App</h3>
+          <p>Choose the correct version for your device.</p>
+
+          <p>
+            <a href="{mac_link}" style="display:inline-block;background:#2563eb;color:white;padding:12px 16px;border-radius:8px;text-decoration:none;font-weight:bold;">Download for Mac</a>
+          </p>
+
+          <p>
+            <a href="{windows_link}" style="display:inline-block;background:#2563eb;color:white;padding:12px 16px;border-radius:8px;text-decoration:none;font-weight:bold;">Download for Windows</a>
+          </p>
+
+          <h3>Important</h3>
+          <ol>
+            <li>Download the correct version for your device.</li>
+            <li>Unzip the file first.</li>
+            <li>Replace the old app folder with the new one.</li>
+            <li>Use your existing email and license key if activation is requested.</li>
+            <li>Run System Check before generating documents.</li>
+          </ol>
+
+          <p style="color:#6b7280;font-size:13px;">
+            Do not share your license key. This message was sent to active UAS Generator license holders.
+          </p>
+        </div>
+        """
+
+        if dry_run:
+            audit_log("update_email_dry_run", license_key, email, "would send update notice")
+            results.append({"email": email, "license_key": license_key, "sent": False, "dry_run": True})
+            continue
+
+        result = send_resend_email(email, subject, html)
+
+        if result.get("ok"):
+            audit_log("update_email_sent", license_key, email, "update notice sent")
+            results.append({"email": email, "license_key": license_key, "sent": True})
+        else:
+            reason = str(result.get("reason", ""))[:500]
+            audit_log("update_email_failed", license_key, email, reason)
+            results.append({"email": email, "license_key": license_key, "sent": False, "reason": reason})
+
+    sent_count = sum(1 for r in results if r.get("sent"))
+    failed_count = sum(1 for r in results if (not r.get("sent") and not r.get("dry_run")))
+
+    audit_log(
+        "update_broadcast_completed",
+        "",
+        "",
+        f"dry_run={dry_run} recipients={len(recipients)} sent={sent_count} failed={failed_count}",
+    )
+
+    return {
+        "ok": True,
+        "dry_run": dry_run,
+        "recipients": len(recipients),
+        "sent": sent_count,
+        "failed": failed_count,
+        "results": results,
+    }
+
+
 @app.post("/stripe/create-checkout-session")
 def create_checkout_session(req: dict):
     if not STRIPE_BASIC_PRICE_ID:
