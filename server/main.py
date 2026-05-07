@@ -235,7 +235,8 @@ def send_download_link(req: dict):
 
 @app.post("/admin/test-email")
 def admin_test_email(req: dict):
-    require_REDACTED(str(req.get("admin_api_key", "")))
+    if str(req.get("admin_api_key", "")) != ADMIN_API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid admin API key")
     to_email = str(req.get("email", "")).strip().lower()
     if not to_email or "@" not in to_email:
         raise HTTPException(status_code=400, detail="Valid email is required")
