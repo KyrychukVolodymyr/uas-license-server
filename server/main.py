@@ -232,6 +232,28 @@ def send_download_link(req: dict):
     return generic
 
 
+
+@app.post("/admin/test-email")
+def admin_test_email(req: dict):
+    require_REDACTED(str(req.get("admin_api_key", "")))
+    to_email = str(req.get("email", "")).strip().lower()
+    if not to_email or "@" not in to_email:
+        raise HTTPException(status_code=400, detail="Valid email is required")
+
+    result = send_resend_email(
+        to_email,
+        "UAS Generator app email diagnostic",
+        "<p>This is a diagnostic email sent through the live UAS license-server app function.</p>",
+    )
+
+    return {
+        "ok": bool(result.get("ok")),
+        "to": to_email,
+        "from": FROM_EMAIL,
+        "reason": result.get("reason", ""),
+        "body": result.get("body", ""),
+    }
+
 @app.post("/issue-license")
 def issue_license(req: IssueLicenseRequest):
     require_admin_key(req.admin_api_key)
@@ -675,28 +697,45 @@ def send_resend_email(to_email: str, subject: str, html: str):
         "html": html,
     }
 
+    safe_from = FROM_EMAIL.replace("\n", " ").replace("\r", " ").strip()
+    audit_log(
+        "email_attempt",
+        "",
+        to_email,
+        f"from={safe_from} subject={subject[:80]} resend_key_present={bool(RESEND_API_KEY)}",
+    )
+
     req = urllib.request.Request(
         "https://api.resend.com/emails",
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Authorization": "Bearer " + RESEND_API_KEY,
             "Content-Type": "application/json",
+            "User-Agent": "uas-license-server",
         },
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            body = resp.read().decode("utf-8")
-            audit_log("email_sent", "", to_email, "resend ok")
-            return {"ok": True, "body": body}
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="ignore")
-        audit_log("email_failed", "", to_email, body[:500])
-        return {"ok": False, "reason": body}
-    except Exception as e:
-        audit_log("email_failed", "", to_email, str(e))
-        return {"ok": False, "reason": str(e)}
+    last_error = ""
+    for attempt in range(1, 4):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                body = resp.read().decode("utf-8", errors="replace")
+                audit_log("email_sent", "", to_email, f"resend ok attempt={attempt} body={body[:400]}")
+                return {"ok": True, "body": body}
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            last_error = f"HTTPError status={e.code} reason={e.reason} body={body}"
+            audit_log("email_failed", "", to_email, last_error[:1500])
+            return {"ok": False, "reason": last_error}
+        except Exception as e:
+            last_error = f"{type(e).__name__}: {repr(e)} attempt={attempt}"
+            audit_log("email_failed_attempt", "", to_email, last_error[:1500])
+            if attempt < 3:
+                time.sleep(1)
+
+    audit_log("email_failed", "", to_email, last_error[:1500])
+    return {"ok": False, "reason": last_error}
 
 def send_license_download_email(email: str, license_key: str):
     mac_token = make_download_token(email, "mac")
