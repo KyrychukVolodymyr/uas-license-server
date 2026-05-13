@@ -18,7 +18,7 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "UAS Generator <onboarding@resend.dev>")
 SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "")
 PUBLIC_WEBSITE_URL = os.getenv("PUBLIC_WEBSITE_URL", "https://uas-generator-website.onrender.com")
-DOWNLOAD_MAC_PATH = os.getenv("DOWNLOAD_MAC_PATH", "/public/UAS_Generator_Mac_v019.zip")
+DOWNLOAD_MAC_PATH = os.getenv("DOWNLOAD_MAC_PATH", "/public/downloads/UAS_Generator_Mac.zip")
 DOWNLOAD_WINDOWS_PATH = os.getenv("DOWNLOAD_WINDOWS_PATH", "/public/UAS_Generator_Windows_v7.zip")
 
 
