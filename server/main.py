@@ -525,7 +525,6 @@ def admin_renew_license(req: dict):
         days = int(req.get("days", 30))
     except Exception:
         raise HTTPException(status_code=400, detail="days must be a number")
-
     if days < 1:
         raise HTTPException(status_code=400, detail="days must be at least 1")
 
@@ -533,30 +532,52 @@ def admin_renew_license(req: dict):
     if not existing:
         raise HTTPException(status_code=404, detail="License not found")
 
+    email = str(existing.get("customer_email", "")).strip().lower()
     current_raw = str(existing.get("expires_at", "")).strip()
     now_dt = datetime.now(timezone.utc)
 
     try:
-        current_dt = datetime.fromisoformat(current_raw.replace("Z", "+00:00")) if current_raw else now_dt
+        current_dt = parse_iso(current_raw) if current_raw else now_dt
     except Exception:
         current_dt = now_dt
 
-    if current_dt.tzinfo is None:
-        current_dt = current_dt.replace(tzinfo=timezone.utc)
-
     base_dt = current_dt if current_dt > now_dt else now_dt
-    new_expires = (base_dt + timedelta(days=days)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    new_expires_dt = base_dt + timedelta(days=days)
 
-    from .db import update_license_expiration_status
+    payload = {
+        "email": email,
+        "issued_at": now_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "expires_at": new_expires_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "max_devices": int(existing.get("max_devices", 1) or 1),
+        "status": "active",
+        "tier": str(existing.get("tier", "basic") or "basic").lower(),
+    }
 
-    changed = update_license_expiration_status(license_key, new_expires, "active")
-    audit_log("renew_license", license_key, existing.get("customer_email", ""), f"days={days} new_expires={new_expires}")
+    new_license_key = generate_license_key(payload)
+    create_or_update_license({
+        "customer_email": email,
+        "license_key": new_license_key,
+        "tier": payload["tier"],
+        "status": "active",
+        "max_devices": payload["max_devices"],
+        "issued_at": payload["issued_at"],
+        "expires_at": payload["expires_at"],
+        "terms_version": "2026-04-21-v2",
+    })
+
+    try:
+        send_license_download_email(email, new_license_key)
+    except Exception as _e:
+        audit_log("admin_renew_email_failed", new_license_key, email, str(_e))
+
+    audit_log("admin_renew_license", new_license_key, email,
+              f"days={days} prev_expires={current_raw} new_expires={payload['expires_at']}")
 
     return {
         "ok": True,
-        "license_key": license_key,
-        "changed": changed,
-        "expires_at": new_expires,
+        "license_key": new_license_key,
+        "previous_license_key": license_key,
+        "expires_at": payload["expires_at"],
         "status": "active",
     }
 
@@ -572,7 +593,6 @@ def admin_update_max_devices(req: dict):
         max_devices = int(req.get("max_devices", 1))
     except Exception:
         raise HTTPException(status_code=400, detail="max_devices must be a number")
-
     if max_devices < 1:
         raise HTTPException(status_code=400, detail="max_devices must be at least 1")
 
@@ -580,19 +600,50 @@ def admin_update_max_devices(req: dict):
     if not existing:
         raise HTTPException(status_code=404, detail="License not found")
 
-    from .db import update_license_max_devices
+    email = str(existing.get("customer_email", "")).strip().lower()
+    current_raw = str(existing.get("expires_at", "")).strip()
+    now_dt = datetime.now(timezone.utc)
 
-    changed = update_license_max_devices(license_key, max_devices)
-    audit_log("update_max_devices", license_key, existing.get("customer_email", ""), f"max_devices={max_devices}")
+    try:
+        current_dt = parse_iso(current_raw) if current_raw else now_dt
+    except Exception:
+        current_dt = now_dt
+
+    payload = {
+        "email": email,
+        "issued_at": now_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "expires_at": current_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "max_devices": max_devices,
+        "status": "active",
+        "tier": str(existing.get("tier", "basic") or "basic").lower(),
+    }
+
+    new_license_key = generate_license_key(payload)
+    create_or_update_license({
+        "customer_email": email,
+        "license_key": new_license_key,
+        "tier": payload["tier"],
+        "status": "active",
+        "max_devices": max_devices,
+        "issued_at": payload["issued_at"],
+        "expires_at": payload["expires_at"],
+        "terms_version": "2026-04-21-v2",
+    })
+
+    try:
+        send_license_download_email(email, new_license_key)
+    except Exception as _e:
+        audit_log("admin_maxdev_email_failed", new_license_key, email, str(_e))
+
+    audit_log("admin_update_max_devices", new_license_key, email,
+              f"max_devices={max_devices} previous_key={license_key}")
 
     return {
         "ok": True,
-        "license_key": license_key,
-        "changed": changed,
+        "license_key": new_license_key,
+        "previous_license_key": license_key,
         "max_devices": max_devices,
     }
-
-
 def b64_url_encode(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
 
@@ -649,17 +700,49 @@ def active_license_for_email(email: str):
 
 def create_paid_license_for_email(email: str, full_name: str = ""):
     email = email.strip().lower()
-    existing = active_license_for_email(email)
+    existing = get_latest_license_for_email(email)
+    now_dt = datetime.now(timezone.utc)
 
-    if existing:
-        return existing
+    if existing and str(existing.get("status", "")).strip().lower() not in ("canceled", "revoked"):
+        current_raw = str(existing.get("expires_at", "")).strip()
+        try:
+            current_dt = parse_iso(current_raw) if current_raw else now_dt
+        except Exception:
+            current_dt = now_dt
 
-    issued_at_dt = datetime.now(timezone.utc)
-    expires_at_dt = issued_at_dt + timedelta(days=32)
+        base_dt = current_dt if current_dt > now_dt else now_dt
+        expires_at_dt = base_dt + timedelta(days=32)
 
+        payload = {
+            "email": email,
+            "issued_at": now_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "expires_at": expires_at_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "max_devices": int(existing.get("max_devices", 1) or 1),
+            "status": "active",
+            "tier": str(existing.get("tier", "basic") or "basic").lower(),
+        }
+
+        license_key = generate_license_key(payload)
+        upsert_customer(email, full_name or "")
+        create_or_update_license({
+            "customer_email": email,
+            "license_key": license_key,
+            "tier": payload["tier"],
+            "status": "active",
+            "max_devices": payload["max_devices"],
+            "issued_at": payload["issued_at"],
+            "expires_at": payload["expires_at"],
+            "terms_version": "2026-04-21-v2",
+        })
+
+        audit_log("stripe_renew_license", license_key, email,
+                  f"prev_expires={current_raw} new_expires={payload['expires_at']}")
+        return get_license(license_key)
+
+    expires_at_dt = now_dt + timedelta(days=32)
     payload = {
         "email": email,
-        "issued_at": issued_at_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "issued_at": now_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "expires_at": expires_at_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "max_devices": 1,
         "status": "active",
@@ -667,21 +750,17 @@ def create_paid_license_for_email(email: str, full_name: str = ""):
     }
 
     license_key = generate_license_key(payload)
-
     upsert_customer(email, full_name or "")
-
-    create_or_update_license(
-        {
-            "customer_email": email,
-            "license_key": license_key,
-            "tier": "basic",
-            "status": "active",
-            "max_devices": 1,
-            "issued_at": payload["issued_at"],
-            "expires_at": payload["expires_at"],
-            "terms_version": "2026-04-21-v2",
-        }
-    )
+    create_or_update_license({
+        "customer_email": email,
+        "license_key": license_key,
+        "tier": "basic",
+        "status": "active",
+        "max_devices": 1,
+        "issued_at": payload["issued_at"],
+        "expires_at": payload["expires_at"],
+        "terms_version": "2026-04-21-v2",
+    })
 
     audit_log("stripe_issue_license", license_key, email, "tier=basic max_devices=1")
     return get_license(license_key)
