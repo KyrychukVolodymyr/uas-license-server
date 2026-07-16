@@ -252,14 +252,104 @@ ADMIN_HTML = """
       color: rgb(22, 101, 52);
     }
 
-    .status-revoked, .status-canceled, .status-expired {
+    .status-revoked {
       background: rgb(254, 226, 226);
       color: rgb(153, 27, 27);
     }
 
-    .status-suspended, .status-past_due {
+    .status-expired, .status-past_due {
       background: rgb(254, 243, 199);
       color: rgb(146, 64, 14);
+    }
+
+    .status-suspended {
+      background: rgb(255, 237, 213);
+      color: rgb(154, 52, 18);
+    }
+
+    .status-canceled, .status-cancelled, .status-blocked, .status-inactive, .status-missing {
+      background: rgb(241, 245, 249);
+      color: rgb(71, 85, 105);
+    }
+
+    .status-trial {
+      background: rgb(219, 234, 254);
+      color: rgb(30, 64, 175);
+    }
+
+    /* Status filter chips */
+    .status-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 4px 0 12px 0;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--slate);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      margin: 0;
+      line-height: 1;
+    }
+
+    .chip .chip-count {
+      color: var(--muted);
+      font-weight: 800;
+      margin-left: 4px;
+    }
+
+    .chip.active {
+      background: var(--navy);
+      color: white;
+      border-color: var(--navy);
+    }
+
+    .chip.active .chip-count {
+      color: rgb(203, 213, 225);
+    }
+
+    /* Sortable headers, monospace keys, numeric alignment */
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    th.sortable .arrow {
+      color: var(--blue);
+      font-size: 11px;
+    }
+
+    td.num, th.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    code.key {
+      display: inline-block;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      background: rgb(248, 250, 252);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 2px 6px;
+    }
+
+    button.mini {
+      padding: 5px 9px;
+      font-size: 12px;
+      margin: 0;
     }
 
     .tier-basic {
@@ -505,18 +595,6 @@ ADMIN_HTML = """
           <input id="licenseSearch" placeholder="email or license key" oninput="renderLicenses()">
         </div>
         <div>
-          <label>Status</label>
-          <select id="statusFilter" onchange="renderLicenses()">
-            <option value="">All statuses</option>
-            <option value="active">Active</option>
-            <option value="trial">Trial</option>
-            <option value="suspended">Suspended</option>
-            <option value="revoked">Revoked</option>
-            <option value="expired">Expired</option>
-            <option value="canceled">Canceled</option>
-          </select>
-        </div>
-        <div>
           <label>Plan</label>
           <select id="tierFilter" onchange="renderLicenses()">
             <option value="">All plans</option>
@@ -528,6 +606,9 @@ ADMIN_HTML = """
         </div>
         <button class="secondary" onclick="clearFilters()">Clear</button>
       </div>
+
+      <label>Status</label>
+      <div id="statusChips" class="status-chips"></div>
 
       <div id="licensesArea" class="small">Licenses not loaded yet.</div>
     </div>
@@ -592,6 +673,8 @@ let allLicenses = [];
 let allLogs = [];
 let logsExpanded = false;
 let currentDetailLicenseKey = "";
+let statusFilterValue = "";
+let licenseSort = { key: "customer_email", dir: "asc" };
 
 function adminKey() {
   return document.getElementById("adminKey").value.trim();
@@ -795,12 +878,6 @@ async function loadLicenses() {
 }
 
 
-function toggleLicenseKey(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.toggle("hidden");
-}
-
 function copyLicenseKeyValue(value) {
   navigator.clipboard.writeText(value || "");
   alert("License key copied.");
@@ -808,23 +885,93 @@ function copyLicenseKeyValue(value) {
 
 function clearFilters() {
   document.getElementById("licenseSearch").value = "";
-  document.getElementById("statusFilter").value = "";
   document.getElementById("tierFilter").value = "";
+  statusFilterValue = "";
   renderLicenses();
+}
+
+function setStatusFilter(value) {
+  statusFilterValue = value;
+  renderLicenses();
+}
+
+function setSort(key) {
+  if (licenseSort.key === key) {
+    licenseSort.dir = licenseSort.dir === "asc" ? "desc" : "asc";
+  } else {
+    licenseSort.key = key;
+    licenseSort.dir = "asc";
+  }
+  renderLicenses();
+}
+
+function sortArrow(key) {
+  if (licenseSort.key !== key) return "";
+  return `<span class="arrow">${licenseSort.dir === "asc" ? "\\u2191" : "\\u2193"}</span>`;
+}
+
+function compareBy(key, dir) {
+  const mult = dir === "asc" ? 1 : -1;
+  return (a, b) => {
+    let av, bv;
+    if (key === "devices") {
+      av = Number(a.device_count ?? 0);
+      bv = Number(b.device_count ?? 0);
+    } else if (key === "expires_at") {
+      av = String(a.expires_at || "");
+      bv = String(b.expires_at || "");
+    } else {
+      av = String(a[key] || "").toLowerCase();
+      bv = String(b[key] || "").toLowerCase();
+    }
+    if (av < bv) return -1 * mult;
+    if (av > bv) return 1 * mult;
+    return 0;
+  };
+}
+
+function renderStatusChips(searchTierFiltered) {
+  const counts = {};
+  searchTierFiltered.forEach(l => {
+    const s = String(l.status || "missing").toLowerCase();
+    counts[s] = (counts[s] || 0) + 1;
+  });
+  const order = ["active", "expired", "revoked", "suspended", "trial", "canceled", "blocked"];
+  const present = Object.keys(counts).sort((a, b) => {
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+  const chip = (value, label, count) => {
+    const cls = "chip" + (statusFilterValue === value ? " active" : "");
+    return `<button class="${cls}" onclick="setStatusFilter('${value}')">${escapeHtml(label)}<span class="chip-count">${count}</span></button>`;
+  };
+  let html = chip("", "All", searchTierFiltered.length);
+  present.forEach(s => {
+    const label = s.charAt(0).toUpperCase() + s.slice(1);
+    html += chip(s, label, counts[s]);
+  });
+  document.getElementById("statusChips").innerHTML = html;
 }
 
 function renderLicenses() {
   const search = document.getElementById("licenseSearch").value.trim().toLowerCase();
-  const status = document.getElementById("statusFilter").value;
   const tier = document.getElementById("tierFilter").value;
 
-  let rows = allLicenses.filter(l => {
+  const searchTierFiltered = allLicenses.filter(l => {
     const text = `${l.customer_email || ""} ${l.customer_full_name || ""} ${l.license_key || ""}`.toLowerCase();
     if (search && !text.includes(search)) return false;
-    if (status && String(l.status || "").toLowerCase() !== status) return false;
     if (tier && String(l.tier || "").toLowerCase() !== tier) return false;
     return true;
   });
+
+  renderStatusChips(searchTierFiltered);
+
+  let rows = searchTierFiltered.filter(l => {
+    if (statusFilterValue && String(l.status || "").toLowerCase() !== statusFilterValue) return false;
+    return true;
+  });
+
+  rows = rows.slice().sort(compareBy(licenseSort.key, licenseSort.dir));
 
   if (!rows.length) {
     document.getElementById("licensesArea").innerHTML = "No licenses found.";
@@ -836,19 +983,18 @@ function renderLicenses() {
       <table class="compact-table">
         <thead>
           <tr>
-            <th class="name-cell">Customer</th>
-            <th>Plan</th>
-            <th>Status</th>
-            <th>Devices</th>
-            <th>Expires</th>
+            <th class="name-cell sortable" onclick="setSort('customer_email')">Customer ${sortArrow('customer_email')}</th>
+            <th class="sortable" onclick="setSort('tier')">Plan ${sortArrow('tier')}</th>
+            <th class="sortable" onclick="setSort('status')">Status ${sortArrow('status')}</th>
+            <th class="num sortable" onclick="setSort('devices')">Devices ${sortArrow('devices')}</th>
+            <th class="num sortable" onclick="setSort('expires_at')">Expires ${sortArrow('expires_at')}</th>
             <th class="key-cell">License Key</th>
             <th class="actions-cell">Actions</th>
           </tr>
         </thead>
         <tbody>
-          ${rows.map((l, idx) => {
+          ${rows.map((l) => {
             const key = l.license_key || "";
-            const keyId = `licenseKey_${idx}`;
             const deviceCount = l.device_count ?? 0;
             const maxDevices = l.max_devices ?? "";
             const email = l.customer_email || "";
@@ -863,18 +1009,15 @@ function renderLicenses() {
                 </td>
                 <td>${pill(l.tier || "basic", "tier")}</td>
                 <td>${pill(l.status || "missing", "status")}</td>
-                <td><b>${fmt(deviceCount)}</b> / ${fmt(maxDevices)}</td>
-                <td>${fmt(l.expires_at)}</td>
+                <td class="num"><b>${fmt(deviceCount)}</b> / ${fmt(maxDevices)}</td>
+                <td class="num">${fmt(l.expires_at)}</td>
                 <td class="key-cell">
-                  <div class="key-actions">
-                    <button class="secondary" onclick="toggleLicenseKey('${keyId}')">View Key</button>
-                    <button onclick='copyLicenseKeyValue(${keyJson})'>Copy Key</button>
-                  </div>
-                  <div id="${keyId}" class="key-hidden-box hidden">${fmt(key)}</div>
+                  <code class="key" title="${fmt(key)}">${fmt(key)}</code>
+                  <button class="mini" onclick='copyLicenseKeyValue(${keyJson})'>Copy</button>
                 </td>
                 <td class="actions-cell">
-                  <button onclick='openDetail(${openJson})'>Open</button>
-                  <button class="success" onclick='quickRenew(${openJson}, 30)'>Renew 30d</button>
+                  <button class="mini" onclick='openDetail(${openJson})'>Open</button>
+                  <button class="mini success" onclick='quickRenew(${openJson}, 30)'>Renew 30d</button>
                 </td>
               </tr>`;
           }).join("")}
