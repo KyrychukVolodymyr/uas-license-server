@@ -32,6 +32,7 @@ from .db import (
     get_license,
     set_license_status,
     update_license_max_devices,
+    mark_expired_licenses,
     count_devices_for_license,
     get_device,
     upsert_device,
@@ -451,6 +452,7 @@ def reset_devices(req: ResetDevicesRequest):
 def admin_licenses(admin_api_key: str, limit: int = 200):
     require_admin_key(admin_api_key)
 
+    mark_expired_licenses()
     rows = list_licenses(limit)
     return {
         "ok": True,
@@ -479,6 +481,7 @@ def admin_license_detail(admin_api_key: str, license_key: str):
 def admin_stats(admin_api_key: str):
     require_admin_key(admin_api_key)
 
+    mark_expired_licenses()
     return {
         "ok": True,
         "stats": dashboard_stats(),
@@ -566,10 +569,17 @@ def admin_renew_license(req: dict):
         "terms_version": "2026-04-21-v2",
     })
 
+    email_sent = False
+    email_error = ""
     try:
-        send_license_download_email(email, new_license_key)
+        result = send_license_download_email(email, new_license_key)
+        email_sent = bool(result.get("ok")) if isinstance(result, dict) else bool(result)
+        if not email_sent:
+            email_error = str(result.get("reason", "")) if isinstance(result, dict) else "send failed"
     except Exception as _e:
-        audit_log("admin_renew_email_failed", new_license_key, email, str(_e))
+        email_error = str(_e)
+    if not email_sent:
+        audit_log("admin_renew_email_failed", new_license_key, email, email_error)
 
     audit_log("admin_renew_license", new_license_key, email,
               f"days={days} prev_expires={current_raw} new_expires={payload['expires_at']}")
@@ -580,6 +590,8 @@ def admin_renew_license(req: dict):
         "previous_license_key": license_key,
         "expires_at": payload["expires_at"],
         "status": "active",
+        "email_sent": email_sent,
+        "email_error": email_error,
     }
 
 @app.post("/admin/update-max-devices")

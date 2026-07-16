@@ -421,6 +421,47 @@ def update_license_max_devices(license_key: str, max_devices: int):
         return result.rowcount
 
 
+def mark_expired_licenses():
+    """Flip status 'active' -> 'expired' for any license past its expires_at.
+
+    Keeps the admin dashboard and its status filter truthful (the app already
+    rejects expired licenses live via require_license_usable; this just makes the
+    stored status match reality). Expiry is parsed in Python to avoid relying on
+    lexicographic ISO comparison. Returns the number of rows flipped.
+    """
+    now = datetime.now(timezone.utc)
+    flipped = 0
+    with engine.begin() as conn:
+        rows = conn.execute(
+            select(licenses.c.license_key, licenses.c.expires_at)
+            .where(licenses.c.status == "active")
+        ).fetchall()
+
+        to_expire = []
+        for row in rows:
+            raw = str(row._mapping.get("expires_at", "") or "").strip()
+            if not raw:
+                continue
+            try:
+                dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            except Exception:
+                continue
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            if dt < now:
+                to_expire.append(row._mapping["license_key"])
+
+        for key in to_expire:
+            conn.execute(
+                update(licenses)
+                .where(licenses.c.license_key == key)
+                .values(status="expired")
+            )
+            flipped += 1
+
+    return flipped
+
+
 def get_latest_license_for_email(email: str):
     email = email.strip().lower()
     with engine.begin() as conn:
