@@ -31,6 +31,7 @@ from .db import (
     ensure_license_from_payload,
     get_license,
     set_license_status,
+    update_license_max_devices,
     count_devices_for_license,
     get_device,
     upsert_device,
@@ -601,48 +602,21 @@ def admin_update_max_devices(req: dict):
         raise HTTPException(status_code=404, detail="License not found")
 
     email = str(existing.get("customer_email", "")).strip().lower()
-    current_raw = str(existing.get("expires_at", "")).strip()
-    now_dt = datetime.now(timezone.utc)
 
-    try:
-        current_dt = parse_iso(current_raw) if current_raw else now_dt
-    except Exception:
-        current_dt = now_dt
+    # Fix 1 (2026-07-16): update max_devices IN PLACE — do not rotate the key.
+    # The device limit is enforced from the DB record (register_or_update_device),
+    # not from the JWT, so the customer's existing key stays valid and the new
+    # device is admitted immediately. Rotating the key here orphaned the key
+    # already installed on the customer's devices, which was the reported bug.
+    update_license_max_devices(license_key, int(max_devices))
 
-    payload = {
-        "email": email,
-        "issued_at": now_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-        "expires_at": current_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-        "max_devices": max_devices,
-        "status": "active",
-        "tier": str(existing.get("tier", "basic") or "basic").lower(),
-    }
-
-    new_license_key = generate_license_key(payload)
-    create_or_update_license({
-        "customer_email": email,
-        "license_key": new_license_key,
-        "tier": payload["tier"],
-        "status": "active",
-        "max_devices": max_devices,
-        "issued_at": payload["issued_at"],
-        "expires_at": payload["expires_at"],
-        "terms_version": "2026-04-21-v2",
-    })
-
-    try:
-        send_license_download_email(email, new_license_key)
-    except Exception as _e:
-        audit_log("admin_maxdev_email_failed", new_license_key, email, str(_e))
-
-    audit_log("admin_update_max_devices", new_license_key, email,
-              f"max_devices={max_devices} previous_key={license_key}")
+    audit_log("admin_update_max_devices", license_key, email,
+              f"max_devices={max_devices}")
 
     return {
         "ok": True,
-        "license_key": new_license_key,
-        "previous_license_key": license_key,
-        "max_devices": max_devices,
+        "license_key": license_key,
+        "max_devices": int(max_devices),
     }
 def b64_url_encode(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
